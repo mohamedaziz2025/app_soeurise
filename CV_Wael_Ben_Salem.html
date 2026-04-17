@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CV - Wael Ben Salem</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+    body {
+        font-family: 'Poppins', sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #555;
+        color: #333;
+    }
+    .cv-wrapper {
+        width: 100%;
+        max-width: 900px;
+        margin: 0 auto;
+        background: #fff;
+        display: flex;
+        overflow: hidden;
+        min-height: 1122px; /* A4 approx */
+    }
+    /* Left Column */
+    .left-col {
+        width: 35%;
+        background-color: #1e2b3c;
+        color: #fff;
+        padding: 45px 35px;
+        box-sizing: border-box;
+    }
+    .profile-img-container {
+        text-align: center;
+        margin-bottom: 35px;
+    }
+    .profile-img {
+        width: 180px;
+        height: 180px;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 5px solid #34495e;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    .left-col h2 {
+        font-size: 1.15rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 8px;
+        margin-bottom: 20px;
+        margin-top: 35px;
+        font-weight: 700;
+        color: #ecf0f1;
+    }
+    .contact-info, .skills-list, .hobbies-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .contact-info li, .skills-list li, .hobbies-list li {
+        margin-bottom: 18px;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        font-weight: 300;
+        color: #bdc3c7;
+    }
+    .contact-info strong {
+        display: block;
+        font-weight: 600;
+        color: #fff;
+        font-size: 0.85rem;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .skills-list li::before, .hobbies-list li::before {
+        content: "•";
+        color: #3498db;
+        font-weight: bold;
+        display: inline-block; 
+        width: 1em;
+        margin-left: -1em;
+    }
+    .skills-list, .hobbies-list {
+        padding-left: 1em;
+    }
+    
+    /* Right Column */
+    .right-col {
+        width: 65%;
+        padding: 60px 50px;
+        box-sizing: border-box;
+    }
+    .header-name h1 {
+        margin: 0;
+        font-size: 3.5rem;
+        font-weight: 700;
+        color: #1e2b3c;
+        line-height: 1.1;
+        letter-spacing: -1px;
+    }
+    .header-name h3 {
+        margin: 15px 0 45px 0;
+        font-weight: 600;
+        color: #3498db;
+        font-size: 1.3rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+    .right-col h2 {
+        font-size: 1.4rem;
+        color: #1e2b3c;
+        text-transform: uppercase;
+        border-bottom: 2px solid #f0f3f5;
+        padding-bottom: 10px;
+        margin-top: 0;
+        margin-bottom: 30px;
+        font-weight: 700;
+        letter-spacing: 1px;
+    }
+    .timeline-item {
+        margin-bottom: 35px;
+        position: relative;
+    }
+    .timeline-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #1e2b3c;
+        margin: 0 0 5px 0;
+    }
+    .timeline-date {
+        font-size: 0.9rem;
+        color: #3498db;
+        font-weight: 600;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .timeline-content {
+        margin: 0;
+        padding-left: 20px;
+        font-size: 0.95rem;
+        color: #555;
+        line-height: 1.6;
+    }
+    .timeline-content li {
+        margin-bottom: 8px;
+    }
+    
+    @media print {
+        body { background: #fff; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .cv-wrapper { width: 100%; max-width: 100%; margin: 0; box-shadow: none; display: flex; align-items: stretch; height: 100%; page-break-after: avoid; border: none; }
+        .left-col { padding: 45px 35px; background-color: #1e2b3c !important; }
+        .right-col { padding: 60px 50px; }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+</style>
+</head>
+<body>
+
+<div class="cv-wrapper">
+    <!-- Left Column -->
+    <div class="left-col">
+        <div class="profile-img-container">
+            <img src="photo.jpg" alt="Photo de Wael Ben Salem" class="profile-img">
+        </div>
+
+        <h2>Contact</h2>
+        <ul class="contact-info">
+            <li>
+                <strong>Téléphone</strong>
+                +216 27 295 641
+            </li>
+            <li>
+                <strong>Email</strong>
+                waelbbensalem@gmail.com
+            </li>
+            <li>
+                <strong>Adresse</strong>
+                Nabeul, Tunisie
+            </li>
+            <li>
+                <strong>Nationalité</strong>
+                Tunisienne (Né le 21/07/1995)
+            </li>
+            <li>
+                <strong>Permis</strong>
+                Type B (Voiture, Camion léger)
+            </li>
+        </ul>
+
+        <h2>Langues</h2>
+        <ul class="skills-list">
+            <li>Arabe (Maternel)</li>
+            <li>Français (Intermédiaire)</li>
+            <li>Anglais (Bases)</li>
+        </ul>
+
+        <h2>Compétences</h2>
+        <ul class="skills-list">
+            <li>Conduite de camions légers</li>
+            <li>Mécanique / Électricité automobile</li>
+            <li>Gestion du temps & délais</li>
+            <li>Planification d'itinéraires</li>
+            <li>Règles de sécurité routière</li>
+            <li>Outils numériques de base</li>
+        </ul>
+
+        <h2>Centres d'intérêt</h2>
+        <ul class="hobbies-list">
+            <li>Sports & Automobile</li>
+            <li>Technologies</li>
+            <li>Voyages</li>
+        </ul>
+    </div>
+
+    <!-- Right Column -->
+    <div class="right-col">
+        <div class="header-name">
+            <h1>Wael<br>Ben Salem</h1>
+            <h3>Chauffeur Professionnel</h3>
+        </div>
+
+        <h2>Expérience professionnelle</h2>
+        
+        <div class="timeline-item">
+            <h4 class="timeline-title">Chauffeur</h4>
+            <div class="timeline-date">2023 - 2025 | Société Al Firma</div>
+            <ul class="timeline-content">
+                <li>Transport et distribution de divers produits alimentaires.</li>
+                <li>Respect strict des normes d'hygiène et de sécurité alimentaire.</li>
+                <li>Planification quotidienne et optimisation des itinéraires de livraison.</li>
+                <li>Rédaction rigoureuse des rapports de livraison et de suivi journaliers.</li>
+                <li>Application exemplaire des règles de sécurité routière au quotidien.</li>
+            </ul>
+        </div>
+
+        <div class="timeline-item">
+            <h4 class="timeline-title">Chauffeur camion léger</h4>
+            <div class="timeline-date">2021 - 2023 | Société Aalam Al Istikbal</div>
+            <ul class="timeline-content">
+                <li>Transport de matériel et fournitures spécialisées pour le secteur hôtelier.</li>
+                <li>Veille au respect absolu des horaires de livraison et des engagements clients.</li>
+                <li>Gestion autonome du chargement, du déchargement et de l'entretien courant du véhicule.</li>
+                <li>Communication directe et représentation de l'entreprise auprès du personnel hôtelier.</li>
+            </ul>
+        </div>
+
+        <br>
+        <h2>Éducation et formation</h2>
+        
+        <div class="timeline-item">
+            <h4 class="timeline-title">Qualification technique automobile</h4>
+            <div class="timeline-date">Centre de formation de Borj Cedria, Tunisie</div>
+            <ul class="timeline-content">
+                <li>Mécanique et électricité automobile. L'acquisition de ces compétences techniques garantit une excellente gestion du véhicule et des diagnostics rapides en cas de besoin sur la route.</li>
+            </ul>
+        </div>
+
+        <div class="timeline-item">
+            <h4 class="timeline-title">Quatrième année secondaire</h4>
+            <div class="timeline-date">Enseignement secondaire, Tunisie</div>
+            <ul class="timeline-content" style="list-style:none; padding:0;"></ul>
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>
