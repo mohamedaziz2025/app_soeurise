@@ -119,6 +119,7 @@ class Comment {
   final DateTime createdAt;
   int likesCount;
   bool isLiked;
+  bool hidden;
   List<Comment> replies;
 
   Comment({
@@ -130,6 +131,7 @@ class Comment {
     required this.createdAt,
     this.likesCount = 0,
     this.isLiked = false,
+    this.hidden = false,
     this.replies = const [],
   });
 
@@ -157,6 +159,7 @@ class Comment {
           : DateTime.now(),
       likesCount: likes.length,
       isLiked: false,
+      hidden: json['hidden'] ?? false,
       replies: repliesJson.map((r) => Comment.fromJson(r)).toList(),
     );
   }
@@ -256,6 +259,40 @@ class Event {
       type: json['type'] ?? 'online',
       location: json['location'] ?? '',
       imageUrl: json['imageUrl'] ?? '',
+    );
+  }
+}
+
+class AppNotification {
+  final String id;
+  final String type;
+  final String title;
+  final String message;
+  final Map<String, dynamic> data;
+  final bool isRead;
+  final DateTime createdAt;
+
+  AppNotification({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.message,
+    required this.data,
+    required this.isRead,
+    required this.createdAt,
+  });
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    return AppNotification(
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
+      type: json['type'] ?? '',
+      title: json['title'] ?? '',
+      message: json['message'] ?? '',
+      data: (json['data'] as Map<String, dynamic>?) ?? <String, dynamic>{},
+      isRead: json['isRead'] ?? false,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt']) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 }

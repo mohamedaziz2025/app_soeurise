@@ -7,6 +7,9 @@ const {
     addMemberSchema,
     updateMemberSchema,
     memberIdSchema,
+    createInviteSchema,
+    inviteTokenSchema,
+    searchUsersSchema,
 } = require("../validators/community.validators");
 
 // ──────────────────────────────────────────
@@ -121,10 +124,15 @@ async function joinGroup(req, res, next) {
             req.user._id
         );
 
-        res.status(201).json({
+        const statusCode = result.alreadyMember ? 200 : 201;
+        res.status(statusCode).json({
             success: true,
             message: result.message,
-            data: { membership: result.membership },
+            data: {
+                membership: result.membership,
+                status: result.status,
+                alreadyMember: result.alreadyMember,
+            },
         });
     } catch (err) {
         next(err);
@@ -151,9 +159,22 @@ async function getMyMembership(req, res, next) {
             data: {
                 status: result.status,
                 roleInGroup: result.roleInGroup,
+                isMuted: result.isMuted,
                 membership: result.membership,
             },
         });
+    } catch (err) {
+        next(err);
+    }
+}
+
+/**
+ * GET /api/community/groups/memberships/me
+ */
+async function listMyMemberships(req, res, next) {
+    try {
+        const memberships = await communityService.listMyMemberships(req.user._id);
+        res.json({ success: true, data: { memberships } });
     } catch (err) {
         next(err);
     }
@@ -188,6 +209,30 @@ async function getMySubscription(req, res, next) {
     }
 }
 
+/**
+ * POST /api/community/groups/:id/leave
+ */
+async function leaveGroup(req, res, next) {
+    try {
+        const { error } = groupIdSchema.validate(req.params);
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de groupe invalide",
+            });
+        }
+
+        const result = await communityService.leaveGroup(
+            req.params.id,
+            req.user._id
+        );
+
+        res.json({ success: true, message: result.message });
+    } catch (err) {
+        next(err);
+    }
+}
+
 // ──────────────────────────────────────────
 //  Phase 5: gestion membres & demandes
 // ──────────────────────────────────────────
@@ -199,6 +244,26 @@ async function listRequests(req, res, next) {
     try {
         const requests = await communityService.listPendingRequests(req.params.id);
         res.json({ success: true, data: { requests } });
+    } catch (err) {
+        next(err);
+    }
+}
+
+/**
+ * GET /api/community/groups/:id/members
+ */
+async function listMembers(req, res, next) {
+    try {
+        const { error } = groupIdSchema.validate(req.params);
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de groupe invalide",
+            });
+        }
+
+        const members = await communityService.listMembers(req.params.id);
+        res.json({ success: true, data: { members } });
     } catch (err) {
         next(err);
     }
@@ -343,17 +408,191 @@ async function removeMember(req, res, next) {
     }
 }
 
+/**
+ * GET /api/community/groups/:id/messages
+ */
+async function listMessages(req, res, next) {
+    try {
+        const { error } = groupIdSchema.validate(req.params);
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de groupe invalide",
+            });
+        }
+
+        const limit = Math.min(parseInt(req.query.limit, 10) || 30, 100);
+        const before = req.query.before ? new Date(req.query.before) : null;
+
+        const messages = await communityService.listMessages(
+            req.params.id,
+            req.user._id,
+            limit,
+            before
+        );
+
+        res.json({ success: true, data: { messages } });
+    } catch (err) {
+        next(err);
+    }
+}
+
+/**
+ * POST /api/community/groups/:id/messages
+ */
+async function sendMessage(req, res, next) {
+    try {
+        const { error } = groupIdSchema.validate(req.params);
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de groupe invalide",
+            });
+        }
+
+        const message = await communityService.createMessage(
+            req.params.id,
+            req.user._id,
+            req.body.text,
+            req.file || null
+        );
+
+        res.status(201).json({
+            success: true,
+            message: "Message envoye",
+            data: { message },
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+/**
+ * GET /api/community/users/search
+ */
+async function searchUsers(req, res, next) {
+    try {
+        const { error, value } = searchUsersSchema.validate(req.query, {
+            stripUnknown: true,
+        });
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: "Paramètres invalides",
+                errors: error.details.map((d) => d.message),
+            });
+        }
+
+        const users = await communityService.searchUsers(
+            value.search,
+            value.limit,
+            req.user._id
+        );
+
+        res.json({ success: true, data: { users } });
+    } catch (err) {
+        next(err);
+    }
+}
+
+/**
+ * POST /api/community/groups/:id/invites
+ */
+async function createInvite(req, res, next) {
+    try {
+        const { error: pError } = groupIdSchema.validate(req.params);
+        if (pError) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de groupe invalide",
+            });
+        }
+
+        const { error, value } = createInviteSchema.validate(req.body || {}, {
+            stripUnknown: true,
+        });
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: "Données invalides",
+                errors: error.details.map((d) => d.message),
+            });
+        }
+
+        const result = await communityService.createInvite(
+            req.params.id,
+            req.user._id,
+            value
+        );
+
+        res.status(201).json({
+            success: true,
+            message: "Lien d'invitation créé",
+            data: {
+                invite: result.invite,
+                group: result.group,
+            },
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+/**
+ * POST /api/community/invites/:token/join
+ */
+async function joinByInvite(req, res, next) {
+    try {
+        const { error } = inviteTokenSchema.validate(req.params);
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: "Token d'invitation invalide",
+            });
+        }
+
+        const result = await communityService.joinByInvite(
+            req.params.token,
+            req.user._id
+        );
+
+        const statusCode = result.alreadyMember ? 200 : 201;
+        res.status(statusCode).json({
+            success: true,
+            message: result.alreadyMember
+                ? "Vous êtes déjà membre de ce groupe"
+                : "Vous avez rejoint le groupe",
+            data: {
+                membership: result.membership,
+                group: result.group,
+                invite: result.invite,
+                alreadyMember: result.alreadyMember,
+            },
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
 module.exports = {
     createGroup,
     listPublicGroups,
     getGroup,
     joinGroup,
     getMyMembership,
+    listMyMemberships,
     getMySubscription,
+    leaveGroup,
     // Phase 5
     listRequests,
+    listMembers,
     handleRequest,
     addMember,
     updateMember,
     removeMember,
+    listMessages,
+    sendMessage,
+    searchUsers,
+    createInvite,
+    joinByInvite,
 };

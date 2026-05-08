@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../constants.dart';
 import '../theme/glass_widgets.dart';
 import '../services/profile_service.dart';
+import '../widgets/responsive.dart';
 import 'login_page.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -15,8 +16,99 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
   bool _darkMode = false;
 
+  Future<void> _showPrivacyDialog(BuildContext context) async {
+    String selectedPrivacy = 'public'; // default
+
+    return showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Confidentialité du profil'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                RadioListTile<String>(
+                  title: const Text('Public'),
+                  subtitle: const Text('Tout le monde peut vous suivre'),
+                  value: 'public',
+                  groupValue: selectedPrivacy,
+                  onChanged: (v) => setState(() => selectedPrivacy = v ?? 'public'),
+                ),
+                RadioListTile<String>(
+                  title: const Text('Privé'),
+                  subtitle: const Text('Vous devez accepter les demandes de suivi'),
+                  value: 'private',
+                  groupValue: selectedPrivacy,
+                  onChanged: (v) => setState(() => selectedPrivacy = v ?? 'private'),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Annuler'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final success = await ProfileService.instance
+                      .updateProfilePrivacy(selectedPrivacy);
+                  if (success && context.mounted) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Confidentialité mise à jour'),
+                        backgroundColor: AppColors.successColor,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Enregistrer'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppBorderRadius.lg),
+        ),
+        title: Text('Déconnexion', style: AppTextStyles.headline3),
+        content: const Text('Voulez-vous vous déconnecter ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Déconnecter'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      ProfileService.instance.logout();
+      if (!context.mounted) return;
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final sidePadding = Responsive.sidePadding(context, maxWidth: 720);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: AnimatedGradientBackground(
@@ -25,7 +117,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                  padding: EdgeInsets.fromLTRB(sidePadding, 16, sidePadding, 24),
                   child: Row(
                     children: [
                       GestureDetector(
@@ -52,7 +144,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: EdgeInsets.symmetric(horizontal: sidePadding),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -123,7 +215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               _navTile(
                                 Icons.shield_rounded,
                                 'Confidentialité du profil',
-                                onTap: () {},
+                                onTap: () => _showPrivacyDialog(context),
                               ),
                               Divider(
                                 color: AppColors.beigeDark.withAlpha(40),
@@ -297,38 +389,5 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
       onTap: onTap,
     );
-  }
-
-  Future<void> _handleLogout(BuildContext context) async {
-    final navigator = Navigator.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppBorderRadius.lg),
-        ),
-        title: Text('Déconnexion', style: AppTextStyles.headline3),
-        content: const Text('Voulez-vous vous déconnecter ?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Déconnecter'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      ProfileService.instance.logout();
-      if (!context.mounted) return;
-      navigator.pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-        (route) => false,
-      );
-    }
   }
 }

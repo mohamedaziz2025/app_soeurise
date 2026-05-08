@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../constants.dart';
 import '../models/models.dart';
 import '../theme/glass_widgets.dart';
 import '../services/post_service.dart';
+import '../services/profile_service.dart';
 import 'user_avatar.dart';
 import 'content_image.dart';
+import 'responsive.dart';
+import '../screens/post_creation_screen.dart';
 
 class PostCard extends StatefulWidget {
   final Post post;
+  final VoidCallback? onPostUpdated;
 
-  const PostCard({super.key, required this.post});
+  const PostCard({
+    super.key,
+    required this.post,
+    this.onPostUpdated,
+  });
 
   @override
   State<PostCard> createState() => _PostCardState();
@@ -52,6 +61,11 @@ class _PostCardState extends State<PostCard>
     super.dispose();
   }
 
+  bool get _canEdit {
+    final currentUserId = ProfileService.instance.profile.value.id;
+    return currentUserId.isNotEmpty && currentUserId == widget.post.authorId;
+  }
+
   void _toggleLike() {
     PostService.instance.toggleLike(widget.post.id);
     setState(() {
@@ -70,30 +84,66 @@ class _PostCardState extends State<PostCard>
     setState(() => _isFollowing = !_isFollowing);
   }
 
-  void _sharePost() {
-    PostService.instance.sharePost(widget.post.id);
-    setState(() => widget.post.shares++);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Post partagé !'),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  Future<void> _sharePost() async {
+    final shareText = _buildShareText();
+    try {
+      await Share.share(shareText);
+    } catch (_) {}
+
+    final success = await PostService.instance.sharePost(widget.post.id);
+    if (success && mounted) {
+      setState(() => widget.post.shares++);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Post partagé !'),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
-  void _repost() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Post republié !'),
-        backgroundColor: AppColors.successColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        duration: const Duration(seconds: 2),
+  Future<void> _repost() async {
+    final repost = await PostService.instance.repostPost(widget.post.id);
+    if (!mounted) return;
+
+    if (repost != null) {
+      widget.onPostUpdated?.call();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Post republié !'),
+          backgroundColor: AppColors.successColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Erreur lors de la republication'),
+          backgroundColor: AppColors.errorColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _editPost() async {
+    final updated = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PostCreationScreen(postToEdit: widget.post),
       ),
     );
+
+    if (!mounted) return;
+    if (updated is Post) {
+      widget.onPostUpdated?.call();
+    }
   }
 
   void _openComments() {
@@ -156,7 +206,7 @@ class _PostCardState extends State<PostCard>
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (widget.post.authorId.isNotEmpty) ...[
+                        if (widget.post.authorId.isNotEmpty && !_canEdit) ...[
                           const SizedBox(width: 8),
                           GestureDetector(
                             onTap: _toggleFollow,
@@ -199,10 +249,26 @@ class _PostCardState extends State<PostCard>
                   ],
                 ),
               ),
-              Icon(
-                Icons.more_horiz_rounded,
-                color: AppColors.textLight,
-              ),
+              _canEdit
+                  ? PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'edit') _editPost();
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(
+                          value: 'edit',
+                          child: Text('Modifier'),
+                        ),
+                      ],
+                      icon: const Icon(
+                        Icons.more_horiz_rounded,
+                        color: AppColors.textLight,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.more_horiz_rounded,
+                      color: AppColors.textLight,
+                    ),
             ],
           ),
 
@@ -357,6 +423,15 @@ class _PostCardState extends State<PostCard>
       return '${diff.inDays}j';
     }
   }
+
+  String _buildShareText() {
+    final buffer = StringBuffer();
+    if (widget.post.content.trim().isNotEmpty) {
+      buffer.writeln(widget.post.content.trim());
+    }
+    buffer.write('${ApiConfig.serverUrl}/posts/${widget.post.id}');
+    return buffer.toString();
+  }
 }
 
 // ──────────────── Comments Bottom Sheet ────────────────
@@ -445,6 +520,95 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     }
   }
 
+  Future<void> _deleteComment(Comment comment) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer le commentaire'),
+        content: const Text('Êtes-vous sûr de vouloir supprimer ce commentaire ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final success = await PostService.instance.deleteComment(
+        widget.postId,
+        comment.id,
+      );
+      if (success && mounted) {
+        setState(() => _comments.removeWhere((c) => c.id == comment.id));
+      }
+    }
+  }
+
+  Future<void> _toggleHideComment(Comment comment) async {
+    final success = await PostService.instance.toggleHideComment(
+      widget.postId,
+      comment.id,
+    );
+    if (success && mounted) {
+      setState(() {
+        comment.hidden = !comment.hidden;
+      });
+    }
+  }
+
+  Future<void> _deleteReply(Comment comment, Comment reply) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer la réponse'),
+        content: const Text('Êtes-vous sûr de vouloir supprimer cette réponse ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final success = await PostService.instance.deleteReply(
+        widget.postId,
+        comment.id,
+        reply.id,
+      );
+      if (success && mounted) {
+        setState(() {
+          comment.replies.removeWhere((r) => r.id == reply.id);
+        });
+      }
+    }
+  }
+
+  Future<void> _likeReply(Comment comment, Comment reply) async {
+    final success = await PostService.instance.likeReply(
+      widget.postId,
+      comment.id,
+      reply.id,
+    );
+    if (success && mounted) {
+      setState(() {
+        reply.isLiked = !reply.isLiked;
+        reply.likesCount += reply.isLiked ? 1 : -1;
+      });
+    }
+  }
+
   void _setReplyTarget(Comment comment) {
     setState(() {
       _replyingToId = comment.id;
@@ -458,7 +622,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
+      height: Responsive.sheetHeight(context),
       decoration: const BoxDecoration(
         color: Color(0xFFFFF8F2),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -634,7 +798,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     );
   }
 
-  Widget _buildCommentTile(Comment comment, {required bool isReply}) {
+  Widget _buildCommentTile(Comment comment, {required bool isReply, Comment? parentComment}) {
     return Padding(
       padding: EdgeInsets.only(left: isReply ? 40 : 0, bottom: 12),
       child: Column(
@@ -685,7 +849,9 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                     Row(
                       children: [
                         GestureDetector(
-                          onTap: () => _likeComment(comment),
+                          onTap: isReply && parentComment != null
+                              ? () => _likeReply(parentComment, comment)
+                              : () => _likeComment(comment),
                           child: Row(
                             children: [
                               Icon(
@@ -722,6 +888,31 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                             ),
                           ),
                         ],
+                        const Spacer(),
+                        PopupMenuButton<String>(
+                          onSelected: (value) async {
+                            if (value == 'delete') {
+                              if (isReply && parentComment != null) {
+                                await _deleteReply(parentComment, comment);
+                              } else {
+                                await _deleteComment(comment);
+                              }
+                            } else if (value == 'hide') {
+                              await _toggleHideComment(comment);
+                            }
+                          },
+                          itemBuilder: (BuildContext context) => [
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Supprimer'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'hide',
+                              child: Text('Masquer'),
+                            ),
+                          ],
+                          child: const Icon(Icons.more_vert, size: 18),
+                        ),
                       ],
                     ),
                   ],
@@ -735,7 +926,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
               padding: const EdgeInsets.only(top: 8),
               child: Column(
                 children: comment.replies
-                    .map((r) => _buildCommentTile(r, isReply: true))
+                    .map((r) => _buildCommentTile(r, isReply: true, parentComment: comment))
                     .toList(),
               ),
             ),

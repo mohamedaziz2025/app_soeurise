@@ -70,6 +70,35 @@ class PostService {
     }
   }
 
+  /// Update an existing post
+  Future<Post?> updatePost({
+    required String postId,
+    required String content,
+    File? imageFile,
+  }) async {
+    try {
+      final fields = {
+        'content': content,
+      };
+
+      final response = await ApiClient.instance.multipartRequest(
+        'PUT',
+        '/posts/$postId',
+        fields: fields,
+        fileField: imageFile != null ? 'image' : null,
+        filePath: imageFile?.path,
+      );
+
+      if (response.success && response.data != null) {
+        return Post.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      print('Error updating post: $e');
+      return null;
+    }
+  }
+
   /// Toggle Like
   Future<bool> toggleLike(String postId) async {
     try {
@@ -89,6 +118,20 @@ class PostService {
     } catch (e) {
       print('Error sharing post: $e');
       return false;
+    }
+  }
+
+  /// Repost a post
+  Future<Post?> repostPost(String postId) async {
+    try {
+      final response = await ApiClient.instance.post('/posts/$postId/repost');
+      if (response.success && response.data != null) {
+        return Post.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      print('Error reposting post: $e');
+      return null;
     }
   }
 
@@ -149,6 +192,71 @@ class PostService {
       return response.success;
     } catch (e) {
       print('Error liking comment: $e');
+      return false;
+    }
+  }
+
+  /// Delete a comment
+  Future<bool> deleteComment(String postId, String commentId) async {
+    try {
+      final response = await ApiClient.instance.delete('/posts/$postId/comments/$commentId');
+      return response.success;
+    } catch (e) {
+      print('Error deleting comment: $e');
+      return false;
+    }
+  }
+
+  /// Toggle hide/show a comment
+  Future<bool> toggleHideComment(String postId, String commentId) async {
+    try {
+      final response = await ApiClient.instance.patch(
+        '/posts/$postId/comments/$commentId/hide',
+        {},
+      );
+      return response.success;
+    } catch (e) {
+      print('Error toggling hide comment: $e');
+      return false;
+    }
+  }
+
+  /// Delete a reply to a comment
+  Future<bool> deleteReply(String postId, String commentId, String replyId) async {
+    try {
+      final response = await ApiClient.instance.delete(
+        '/posts/$postId/comments/$commentId/replies/$replyId',
+      );
+      return response.success;
+    } catch (e) {
+      print('Error deleting reply: $e');
+      return false;
+    }
+  }
+
+  /// Toggle hide/show a reply
+  Future<bool> toggleHideReply(String postId, String commentId, String replyId) async {
+    try {
+      final response = await ApiClient.instance.patch(
+        '/posts/$postId/comments/$commentId/replies/$replyId/hide',
+        {},
+      );
+      return response.success;
+    } catch (e) {
+      print('Error toggling hide reply: $e');
+      return false;
+    }
+  }
+
+  /// Like/unlike a reply
+  Future<bool> likeReply(String postId, String commentId, String replyId) async {
+    try {
+      final response = await ApiClient.instance.post(
+        '/posts/$postId/comments/$commentId/replies/$replyId/like',
+      );
+      return response.success;
+    } catch (e) {
+      print('Error liking reply: $e');
       return false;
     }
   }

@@ -6,6 +6,13 @@ async function hashPassword(password) {
 }
 
 async function comparePassword(password, hash) {
+  // Validate inputs
+  if (!password || typeof password !== 'string') {
+    throw new Error('Le mot de passe ne peut pas être vide');
+  }
+  if (!hash || typeof hash !== 'string') {
+    throw new Error('Hash du mot de passe manquant ou invalide');
+  }
   return bcrypt.compare(password, hash);
 }
 

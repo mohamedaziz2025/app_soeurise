@@ -9,6 +9,7 @@ import 'events_screen.dart';
 import 'profile_screen.dart';
 import 'post_creation_screen.dart';
 import 'admin_screen.dart';
+import '../services/notification_service.dart';
 
 class MainApp extends StatefulWidget {
   const MainApp({super.key});
@@ -37,13 +38,15 @@ class _MainAppState extends State<MainApp> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
+    NotificationRealtimeService.instance.connect();
+
     // 5 screens matching 5 nav items 1:1
     _screens = [
-      HomeScreen(key: _homeScreenKey),   // 0: Accueil
-      const CommunitiesScreen(),          // 1: Communautés
-      const MasterclassScreen(),          // 2: Masterclass
-      const EventsScreen(),              // 3: Événements
-      const ProfileScreen(),             // 4: Profil
+      HomeScreen(key: _homeScreenKey), // 0: Accueil
+      const CommunitiesScreen(), // 1: Communautés
+      const MasterclassScreen(), // 2: Masterclass
+      const EventsScreen(), // 3: Événements
+      const ProfileScreen(), // 4: Profil
     ];
 
     _iconControllers = List.generate(
@@ -58,6 +61,7 @@ class _MainAppState extends State<MainApp> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    NotificationRealtimeService.instance.disconnect();
     for (var c in _iconControllers) {
       c.dispose();
     }
@@ -105,6 +109,7 @@ class _MainAppState extends State<MainApp> with TickerProviderStateMixin {
         children: _screens,
       ),
       extendBody: true,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       // FAB for post creation — only visible on home screen
       floatingActionButton: _selectedIndex == 0
           ? Container(
@@ -213,12 +218,51 @@ class _MainAppState extends State<MainApp> with TickerProviderStateMixin {
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        Icon(
-                          isSelected ? item.activeIcon : item.icon,
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.textLight,
-                          size: 22,
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Icon(
+                              isSelected ? item.activeIcon : item.icon,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.textLight,
+                              size: 22,
+                            ),
+                            if (index == 0)
+                              ValueListenableBuilder(
+                                valueListenable: NotificationRealtimeService
+                                    .instance
+                                    .notifications,
+                                builder: (context, list, _) {
+                                  final unread = list
+                                      .where((n) => !n.isRead)
+                                      .length;
+                                  if (unread == 0) return const SizedBox.shrink();
+                                  return Positioned(
+                                    right: -4,
+                                    top: -4,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        unread > 9 ? '9+' : unread.toString(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                          ],
                         ),
                         if (isProfile && isAdmin)
                           Positioned(

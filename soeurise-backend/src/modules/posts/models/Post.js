@@ -20,6 +20,11 @@ const postSchema = new mongoose.Schema(
       ref: "Group",
       default: null,
     },
+    repostOf: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+      default: null,
+    },
     likesCount: {
       type: Number,
       default: 0,
@@ -53,6 +58,10 @@ const postSchema = new mongoose.Schema(
           type: Date,
           default: Date.now,
         },
+        hidden: {
+          type: Boolean,
+          default: false,
+        },
         likes: [
           {
             type: mongoose.Schema.Types.ObjectId,
@@ -73,6 +82,10 @@ const postSchema = new mongoose.Schema(
             createdAt: {
               type: Date,
               default: Date.now,
+            },
+            hidden: {
+              type: Boolean,
+              default: false,
             },
             likes: [
               {

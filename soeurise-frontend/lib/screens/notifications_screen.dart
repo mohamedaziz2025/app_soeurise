@@ -1,44 +1,27 @@
 import 'package:flutter/material.dart';
 import '../constants.dart';
 import '../theme/glass_widgets.dart';
+import '../widgets/responsive.dart';
+import '../services/notification_service.dart';
+import '../models/models.dart';
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    NotificationRealtimeService.instance.loadInitial();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final notifications = [
-      _NotifData(
-        Icons.favorite_rounded,
-        'Aisha a aimé votre publication',
-        'Il y a 2h',
-        AppColors.primary,
-      ),
-      _NotifData(
-        Icons.comment_rounded,
-        'Zainab a commenté votre post',
-        'Il y a 3h',
-        const Color(0xFF64B5F6),
-      ),
-      _NotifData(
-        Icons.event_rounded,
-        'Nouvel événement: Femmes Leaders',
-        'Il y a 5h',
-        AppColors.warningColor,
-      ),
-      _NotifData(
-        Icons.group_add_rounded,
-        'Maryam a rejoint votre communauté',
-        'Il y a 1j',
-        AppColors.successColor,
-      ),
-      _NotifData(
-        Icons.school_rounded,
-        'Nouvelle masterclass disponible',
-        'Il y a 2j',
-        const Color(0xFFBA68C8),
-      ),
-    ];
+    final sidePadding = Responsive.sidePadding(context, maxWidth: 720);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -47,7 +30,7 @@ class NotificationsScreen extends StatelessWidget {
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                padding: EdgeInsets.fromLTRB(sidePadding, 16, sidePadding, 20),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -73,7 +56,8 @@ class NotificationsScreen extends StatelessWidget {
                       ],
                     ),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () =>
+                          NotificationRealtimeService.instance.markAllRead(),
                       child: Text(
                         'Tout lire',
                         style: AppTextStyles.bodySmall.copyWith(
@@ -86,77 +70,142 @@ class NotificationsScreen extends StatelessWidget {
                 ),
               ),
             ),
+            ValueListenableBuilder<List<AppNotification>>(
+              valueListenable: NotificationRealtimeService
+                  .instance
+                  .notifications,
+              builder: (context, notifications, _) {
+                if (notifications.isEmpty) {
+                  return SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Text(
+                        'Aucune notification',
+                        style: AppTextStyles.bodyMedium,
+                      ),
+                    ),
+                  );
+                }
 
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final n = notifications[index];
-                    return FadeSlideIn(
-                      delay: Duration(milliseconds: index * 80),
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: GlassCard(
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: n.color.withAlpha(25),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(n.icon, color: n.color, size: 22),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                return SliverPadding(
+                  padding: EdgeInsets.fromLTRB(sidePadding, 0, sidePadding, 32),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final n = notifications[index];
+                        final icon = _iconForType(n.type);
+                        final color = _colorForType(n.type);
+                        return FadeSlideIn(
+                          delay: Duration(milliseconds: index * 80),
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: GestureDetector(
+                              onTap: () => NotificationRealtimeService
+                                  .instance
+                                  .markRead(n.id),
+                              child: GlassCard(
+                                child: Row(
                                   children: [
-                                    Text(
-                                      n.text,
-                                      style: AppTextStyles.bodyMedium.copyWith(
-                                        color: AppColors.textPrimary,
-                                        fontWeight: FontWeight.w500,
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: color.withAlpha(25),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(icon, color: color, size: 22),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            n.title.isNotEmpty ? n.title : n.message,
+                                            style: AppTextStyles.bodyMedium.copyWith(
+                                              color: AppColors.textPrimary,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            _timeAgo(n.createdAt),
+                                            style: AppTextStyles.caption,
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(n.time, style: AppTextStyles.caption),
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: n.isRead
+                                            ? Colors.transparent
+                                            : AppColors.primary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: index < 2
-                                      ? AppColors.primary
-                                      : Colors.transparent,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
-                    );
-                  },
-                  childCount: notifications.length,
-                ),
-              ),
+                        );
+                      },
+                      childCount: notifications.length,
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
       ),
     );
   }
-}
 
-class _NotifData {
-  final IconData icon;
-  final String text;
-  final String time;
-  final Color color;
+  IconData _iconForType(String type) {
+    switch (type) {
+      case 'post_like':
+        return Icons.favorite_rounded;
+      case 'post_comment':
+        return Icons.comment_rounded;
+      case 'group_join':
+        return Icons.group_add_rounded;
+      case 'event_new':
+        return Icons.event_rounded;
+      case 'masterclass_new':
+        return Icons.school_rounded;
+      case 'group_message':
+        return Icons.chat_bubble_rounded;
+      default:
+        return Icons.notifications_rounded;
+    }
+  }
 
-  _NotifData(this.icon, this.text, this.time, this.color);
+  Color _colorForType(String type) {
+    switch (type) {
+      case 'post_like':
+        return AppColors.primary;
+      case 'post_comment':
+        return const Color(0xFF64B5F6);
+      case 'group_join':
+        return AppColors.successColor;
+      case 'event_new':
+        return AppColors.warningColor;
+      case 'masterclass_new':
+        return const Color(0xFFBA68C8);
+      case 'group_message':
+        return AppColors.primaryDark;
+      default:
+        return AppColors.primary;
+    }
+  }
+
+  String _timeAgo(DateTime dateTime) {
+    final diff = DateTime.now().difference(dateTime);
+    if (diff.inMinutes < 1) return "a l'instant";
+    if (diff.inHours < 1) return '${diff.inMinutes}m';
+    if (diff.inDays < 1) return '${diff.inHours}h';
+    return '${diff.inDays}j';
+  }
 }

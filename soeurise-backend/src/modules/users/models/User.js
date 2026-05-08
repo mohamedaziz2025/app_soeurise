@@ -31,6 +31,30 @@ const userSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+
+    // Privacy settings
+    profilePrivacy: {
+      type: String,
+      enum: ["public", "private"],
+      default: "public",
+    },
+    followRequests: [
+      {
+        from: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        status: {
+          type: String,
+          enum: ["pending", "accepted", "rejected"],
+          default: "pending",
+        },
+        requestedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );
@@ -47,6 +71,7 @@ userSchema.methods.toPublic = function () {
     role: this.role,
     isActive: this.isActive,
     createdAt: this.createdAt,
+    profilePrivacy: this.profilePrivacy || "public",
     followingCount: this.following ? this.following.length : 0,
     followersCount: this.followers ? this.followers.length : 0,
   };

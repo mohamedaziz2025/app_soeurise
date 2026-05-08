@@ -6,11 +6,20 @@ import '../theme/glass_widgets.dart';
 import '../models/models.dart';
 import '../widgets/user_avatar.dart';
 import '../services/post_service.dart';
+import '../services/profile_service.dart';
+import '../widgets/responsive.dart';
 
 class PostCreationScreen extends StatefulWidget {
-  final Function(Post)? onPostCreated;
+  final ValueChanged<Post>? onPostCreated;
+  final ValueChanged<Post>? onPostUpdated;
+  final Post? postToEdit;
 
-  const PostCreationScreen({super.key, this.onPostCreated});
+  const PostCreationScreen({
+    super.key,
+    this.onPostCreated,
+    this.onPostUpdated,
+    this.postToEdit,
+  });
 
   @override
   State<PostCreationScreen> createState() => _PostCreationScreenState();
@@ -21,6 +30,18 @@ class _PostCreationScreenState extends State<PostCreationScreen> {
   final ImagePicker _picker = ImagePicker();
   File? selectedImage;
   bool _isPublishing = false;
+  String? _existingImageUrl;
+
+  bool get _isEditing => widget.postToEdit != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditing) {
+      textController.text = widget.postToEdit!.content;
+      _existingImageUrl = widget.postToEdit!.imageUrl;
+    }
+  }
 
   Future<void> _pickImage() async {
     try {
@@ -39,8 +60,9 @@ class _PostCreationScreenState extends State<PostCreationScreen> {
     }
   }
 
-  Future<void> _publishPost() async {
-    if (textController.text.isEmpty) {
+  Future<void> _submitPost() async {
+    final content = textController.text.trim();
+    if (content.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Veuillez entrer du texte')),
       );
@@ -49,21 +71,37 @@ class _PostCreationScreenState extends State<PostCreationScreen> {
 
     setState(() => _isPublishing = true);
 
-    final newPost = await PostService.instance.createPost(
-      content: textController.text,
-      imageFile: selectedImage,
-    );
+    Post? resultPost;
+    if (_isEditing) {
+      resultPost = await PostService.instance.updatePost(
+        postId: widget.postToEdit!.id,
+        content: content,
+        imageFile: selectedImage,
+      );
+    } else {
+      resultPost = await PostService.instance.createPost(
+        content: content,
+        imageFile: selectedImage,
+      );
+    }
 
     if (mounted) {
       setState(() => _isPublishing = false);
-      if (newPost != null) {
-        if (widget.onPostCreated != null) {
-          widget.onPostCreated!(newPost);
+      if (resultPost != null) {
+        if (_isEditing) {
+          widget.onPostUpdated?.call(resultPost);
+          Navigator.pop(context, resultPost);
+        } else {
+          widget.onPostCreated?.call(resultPost);
+          Navigator.pop(context, true);
         }
-        Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Erreur lors de la création du post')),
+          SnackBar(
+            content: Text(_isEditing
+                ? 'Erreur lors de la modification du post'
+                : 'Erreur lors de la création du post'),
+          ),
         );
       }
     }
@@ -71,6 +109,8 @@ class _PostCreationScreenState extends State<PostCreationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final sidePadding = Responsive.sidePadding(context, maxWidth: 720);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: AnimatedGradientBackground(
@@ -79,8 +119,8 @@ class _PostCreationScreenState extends State<PostCreationScreen> {
             children: [
               // Top bar
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
+                padding: EdgeInsets.symmetric(
+                  horizontal: sidePadding,
                   vertical: 8,
                 ),
                 child: Row(
@@ -104,8 +144,10 @@ class _PostCreationScreenState extends State<PostCreationScreen> {
                     ShaderMask(
                       shaderCallback: (bounds) =>
                           AppColors.accentGradient.createShader(bounds),
-                      child: const Text(
-                        'Nouvelle publication',
+                      child: Text(
+                        _isEditing
+                            ? 'Modifier la publication'
+                            : 'Nouvelle publication',
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 18,
@@ -116,10 +158,10 @@ class _PostCreationScreenState extends State<PostCreationScreen> {
                     ),
                     const Spacer(),
                     GlassButton(
-                      label: 'Publier',
+                      label: _isEditing ? 'Enregistrer' : 'Publier',
                       isLoading: _isPublishing,
                       width: 100,
-                      onPressed: _publishPost,
+                      onPressed: _submitPost,
                     ),
                   ],
                 ),
@@ -128,47 +170,57 @@ class _PostCreationScreenState extends State<PostCreationScreen> {
               // Content
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: sidePadding,
+                    vertical: 20,
+                  ),
                   child: Column(
                     children: [
                       // User info
                       FadeSlideIn(
-                        child: Row(
-                          children: [
-                            UserAvatar(
-                              imageUrl: 'https://via.placeholder.com/64',
-                              username: 'Fatima Ahmed',
-                              radius: 24,
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        child: ValueListenableBuilder<Profile>(
+                          valueListenable: ProfileService.instance.profile,
+                          builder: (context, profile, _) {
+                            return Row(
                               children: [
-                                Text(
-                                  'Fatima Ahmed',
-                                  style: AppTextStyles.bodyLarge.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                UserAvatar(
+                                  imageUrl: profile.profileImageUrl.isNotEmpty
+                                      ? profile.profileImageUrl
+                                      : null,
+                                  username: profile.fullName,
+                                  radius: 24,
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withAlpha(15),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    '🌍 Public',
-                                    style: AppTextStyles.caption.copyWith(
-                                      color: AppColors.primary,
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      profile.fullName,
+                                      style: AppTextStyles.bodyLarge.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withAlpha(15),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '@${profile.username}',
+                                        style: AppTextStyles.caption.copyWith(
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
-                            ),
-                          ],
+                            );
+                          },
                         ),
                       ),
 
@@ -232,6 +284,21 @@ class _PostCreationScreenState extends State<PostCreationScreen> {
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                      ] else if (_existingImageUrl != null &&
+                          _existingImageUrl!.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        FadeSlideIn(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                                AppBorderRadius.lg),
+                            child: Image.network(
+                              _existingImageUrl!,
+                              height: 200,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                       ],

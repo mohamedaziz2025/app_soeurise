@@ -1,5 +1,6 @@
 const Post = require("../models/Post");
 const User = require("../../users/models/User");
+const usersService = require("../../users/services/users.service");
 
 /**
  * @desc    Get paginated feed of posts (global or community)
@@ -119,6 +120,87 @@ exports.createPost = async (req, res, next) => {
       success: true,
       data: populatedPost,
       message: "Post publié avec succès",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Update an existing post
+ * @route   PUT /api/posts/:id
+ * @access  Private
+ */
+exports.updatePost = async (req, res, next) => {
+  try {
+    const { content } = req.body;
+    const post = await Post.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post introuvable" });
+    }
+
+    if (post.author.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Accès refusé" });
+    }
+
+    if (typeof content === "string") {
+      if (!content.trim()) {
+        return res.status(400).json({ success: false, message: "Le contenu est requis" });
+      }
+      post.content = content.trim();
+    }
+
+    if (req.file) {
+      post.image = `/uploads/posts/${req.file.filename}`;
+    }
+
+    await post.save();
+
+    const populatedPost = await Post.findById(post._id).populate(
+      "author",
+      "firstName lastName username avatarUrl"
+    );
+
+    res.json({
+      success: true,
+      data: populatedPost,
+      message: "Post modifié avec succès",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Repost an existing post
+ * @route   POST /api/posts/:id/repost
+ * @access  Private
+ */
+exports.repostPost = async (req, res, next) => {
+  try {
+    const originalPost = await Post.findById(req.params.id);
+    if (!originalPost) {
+      return res.status(404).json({ success: false, message: "Post introuvable" });
+    }
+
+    const repost = await Post.create({
+      author: req.user._id,
+      content: originalPost.content,
+      image: originalPost.image,
+      communityId: originalPost.communityId || null,
+      repostOf: originalPost._id,
+    });
+
+    const populatedPost = await Post.findById(repost._id).populate(
+      "author",
+      "firstName lastName username avatarUrl"
+    );
+
+    res.status(201).json({
+      success: true,
+      data: populatedPost,
+      message: "Post republié",
     });
   } catch (error) {
     next(error);
@@ -330,42 +412,216 @@ exports.sharePost = async (req, res, next) => {
 };
 
 /**
+ * @desc    Delete a comment
+ * @route   DELETE /api/posts/:id/comments/:commentId
+ * @access  Private (comment author or post owner)
+ */
+exports.deleteComment = async (req, res, next) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post introuvable" });
+    }
+
+    const comment = post.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: "Commentaire introuvable" });
+    }
+
+    // Check authorization: comment author or post owner
+    const isCommentAuthor = comment.author.toString() === req.user._id.toString();
+    const isPostOwner = post.author.toString() === req.user._id.toString();
+
+    if (!isCommentAuthor && !isPostOwner) {
+      return res.status(403).json({ success: false, message: "Non autorisé" });
+    }
+
+    post.comments.id(req.params.commentId).deleteOne();
+    post.commentsCount = Math.max(0, post.commentsCount - 1);
+    await post.save();
+
+    res.json({ success: true, message: "Commentaire supprimé" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Hide/show a comment
+ * @route   PATCH /api/posts/:id/comments/:commentId/hide
+ * @access  Private (comment author or post owner)
+ */
+exports.toggleHideComment = async (req, res, next) => {
+  try {
+    const { hidden } = req.body;
+    if (typeof hidden !== "boolean") {
+      return res.status(400).json({ success: false, message: "Paramètre 'hidden' requis (boolean)" });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post introuvable" });
+    }
+
+    const comment = post.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: "Commentaire introuvable" });
+    }
+
+    // Check authorization: comment author or post owner
+    const isCommentAuthor = comment.author.toString() === req.user._id.toString();
+    const isPostOwner = post.author.toString() === req.user._id.toString();
+
+    if (!isCommentAuthor && !isPostOwner) {
+      return res.status(403).json({ success: false, message: "Non autorisé" });
+    }
+
+    comment.hidden = hidden;
+    await post.save();
+
+    res.json({ success: true, data: { hidden: comment.hidden }, message: hidden ? "Commentaire masqué" : "Commentaire visible" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Delete a reply
+ * @route   DELETE /api/posts/:id/comments/:commentId/replies/:replyId
+ * @access  Private (reply author or post owner)
+ */
+exports.deleteReply = async (req, res, next) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post introuvable" });
+    }
+
+    const comment = post.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: "Commentaire introuvable" });
+    }
+
+    const reply = comment.replies.id(req.params.replyId);
+    if (!reply) {
+      return res.status(404).json({ success: false, message: "Réponse introuvable" });
+    }
+
+    // Check authorization: reply author or post owner
+    const isReplyAuthor = reply.author.toString() === req.user._id.toString();
+    const isPostOwner = post.author.toString() === req.user._id.toString();
+
+    if (!isReplyAuthor && !isPostOwner) {
+      return res.status(403).json({ success: false, message: "Non autorisé" });
+    }
+
+    reply.deleteOne();
+    await post.save();
+
+    res.json({ success: true, message: "Réponse supprimée" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Hide/show a reply
+ * @route   PATCH /api/posts/:id/comments/:commentId/replies/:replyId/hide
+ * @access  Private (reply author or post owner)
+ */
+exports.toggleHideReply = async (req, res, next) => {
+  try {
+    const { hidden } = req.body;
+    if (typeof hidden !== "boolean") {
+      return res.status(400).json({ success: false, message: "Paramètre 'hidden' requis (boolean)" });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post introuvable" });
+    }
+
+    const comment = post.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: "Commentaire introuvable" });
+    }
+
+    const reply = comment.replies.id(req.params.replyId);
+    if (!reply) {
+      return res.status(404).json({ success: false, message: "Réponse introuvable" });
+    }
+
+    // Check authorization: reply author or post owner
+    const isReplyAuthor = reply.author.toString() === req.user._id.toString();
+    const isPostOwner = post.author.toString() === req.user._id.toString();
+
+    if (!isReplyAuthor && !isPostOwner) {
+      return res.status(403).json({ success: false, message: "Non autorisé" });
+    }
+
+    reply.hidden = hidden;
+    await post.save();
+
+    res.json({ success: true, data: { hidden: reply.hidden }, message: hidden ? "Réponse masquée" : "Réponse visible" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Like/unlike a reply
+ * @route   POST /api/posts/:id/comments/:commentId/replies/:replyId/like
+ * @access  Private
+ */
+exports.likeReply = async (req, res, next) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post introuvable" });
+    }
+
+    const comment = post.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: "Commentaire introuvable" });
+    }
+
+    const reply = comment.replies.id(req.params.replyId);
+    if (!reply) {
+      return res.status(404).json({ success: false, message: "Réponse introuvable" });
+    }
+
+    const userId = req.user._id;
+    const isLiked = reply.likes.includes(userId);
+
+    if (isLiked) {
+      reply.likes.pull(userId);
+    } else {
+      reply.likes.push(userId);
+    }
+
+    await post.save();
+
+    res.json({
+      success: true,
+      data: { likesCount: reply.likes.length, isLiked: !isLiked },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @desc    Toggle follow/unfollow a user
  * @route   POST /api/users/:id/follow
  * @access  Private
  */
 exports.toggleFollow = async (req, res, next) => {
   try {
-    const targetUserId = req.params.id;
-    const currentUserId = req.user._id;
-
-    if (targetUserId === currentUserId.toString()) {
-      return res.status(400).json({ success: false, message: "Vous ne pouvez pas vous suivre vous-même" });
-    }
-
-    const targetUser = await User.findById(targetUserId);
-    if (!targetUser) {
-      return res.status(404).json({ success: false, message: "Utilisateur introuvable" });
-    }
-
-    const currentUser = await User.findById(currentUserId);
-    const isFollowing = currentUser.following.includes(targetUserId);
-
-    if (isFollowing) {
-      currentUser.following.pull(targetUserId);
-      targetUser.followers.pull(currentUserId);
-    } else {
-      currentUser.following.push(targetUserId);
-      targetUser.followers.push(currentUserId);
-    }
-
-    await currentUser.save();
-    await targetUser.save();
-
+    const result = await usersService.toggleFollow(req.user._id, req.params.id);
     res.json({
       success: true,
-      data: { isFollowing: !isFollowing },
-      message: isFollowing ? "Désabonné" : "Abonné",
+      message: result.isPending ? "Demande de suivi envoyée" : (result.isFollowing ? "Abonné" : "Désabonné"),
+      data: result,
     });
   } catch (error) {
     next(error);

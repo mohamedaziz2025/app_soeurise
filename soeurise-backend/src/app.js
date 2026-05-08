@@ -19,6 +19,7 @@ const adminRoutes = require("./modules/admin/routes/admin.routes");
 const communityRoutes = require("./modules/community/routes/community.routes");
 const masterclassRoutes = require("./modules/masterclass/routes/masterclass.routes");
 const eventsRoutes = require("./modules/events/routes/events.routes");
+const notificationRoutes = require("./modules/notifications/routes/notification.routes");
 
 function createApp() {
   const app = express();
@@ -55,6 +56,7 @@ function createApp() {
   app.use("/api/wp", wpRoutes);
   app.use("/api/admin", adminRoutes);
   app.use("/api/community", communityRoutes);
+  app.use("/api/notifications", notificationRoutes);
   app.use("/api/masterclass", masterclassRoutes);
   app.use("/api/events", eventsRoutes);
 

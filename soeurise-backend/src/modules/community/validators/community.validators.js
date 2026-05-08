@@ -65,6 +65,7 @@ const addMemberSchema = Joi.object({
 const updateMemberSchema = Joi.object({
     roleInGroup: Joi.string().valid("member", "moderator", "owner"),
     status: Joi.string().valid("active", "banned"),
+    isMuted: Joi.boolean(),
 }).min(1).messages({
     "object.min": "Au moins un champ (roleInGroup ou status) est requis",
 });
@@ -79,6 +80,35 @@ const memberIdSchema = Joi.object({
     }),
 });
 
+/**
+ * POST /api/community/groups/:id/invites
+ */
+const createInviteSchema = Joi.object({
+    expiresInDays: Joi.number().integer().min(1).max(90).default(7),
+    maxUses: Joi.number().integer().min(1).max(500),
+});
+
+/**
+ * POST /api/community/invites/:token/join
+ */
+const inviteTokenSchema = Joi.object({
+    token: Joi.string().pattern(/^[A-Za-z0-9_-]{16,80}$/).required().messages({
+        "string.pattern.base": "Token d'invitation invalide",
+        "any.required": "Token d'invitation requis",
+    }),
+});
+
+/**
+ * GET /api/community/users/search
+ */
+const searchUsersSchema = Joi.object({
+    search: Joi.string().trim().min(2).max(100).required().messages({
+        "string.min": "La recherche doit contenir au moins 2 caractères",
+        "any.required": "Le terme de recherche est requis",
+    }),
+    limit: Joi.number().integer().min(1).max(50).default(10),
+});
+
 module.exports = {
     createGroupSchema,
     listPublicSchema,
@@ -87,4 +117,7 @@ module.exports = {
     addMemberSchema,
     updateMemberSchema,
     memberIdSchema,
+    createInviteSchema,
+    inviteTokenSchema,
+    searchUsersSchema,
 };

@@ -60,6 +60,21 @@ class _MasterclassScreenState extends State<MasterclassScreen> {
     });
   }
 
+  void _handleExit() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+    _reload();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Retour au catalogue des masterclass'),
+        backgroundColor: AppColors.primary,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -69,6 +84,14 @@ class _MasterclassScreenState extends State<MasterclassScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        leading: IconButton(
+          onPressed: _handleExit,
+          icon: const Icon(
+            Icons.close_rounded,
+            color: AppColors.textPrimary,
+          ),
+          tooltip: 'Quitter',
+        ),
         title: Text(
           'Masterclass',
           style: AppTextStyles.headline3,
@@ -102,13 +125,17 @@ class _MasterclassScreenState extends State<MasterclassScreen> {
   }
 
   Widget _buildWebView() {
-    return platform_view.buildWebView(
-      key: _webViewKey,
-      url: _websiteUrl,
-      onLoadStart: onLoadStart,
-      onProgress: onProgress,
-      onLoadFinished: onLoadFinished,
-      onError: onError,
+    final bottomInset = MediaQuery.of(context).padding.bottom + 78;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: platform_view.buildWebView(
+        key: _webViewKey,
+        url: _websiteUrl,
+        onLoadStart: onLoadStart,
+        onProgress: onProgress,
+        onLoadFinished: onLoadFinished,
+        onError: onError,
+      ),
     );
   }
 

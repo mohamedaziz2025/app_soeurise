@@ -79,4 +79,91 @@ async function deleteAvatar(req, res, next) {
     }
 }
 
-module.exports = { getMe, updateMe, updateAvatar, deleteAvatar };
+/**
+ * POST /api/users/:id/follow
+ */
+async function toggleFollow(req, res, next) {
+    try {
+        const result = await usersService.toggleFollow(req.user._id, req.params.id);
+        res.json({
+            success: true,
+            message: result.isPending ? "Demande de suivi envoyée" : (result.isFollowing ? "Abonné" : "Désabonné"),
+            data: result,
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+/**
+ * GET /api/users/me/follow-requests
+ */
+async function getFollowRequests(req, res, next) {
+    try {
+        const user = req.user;
+        const requests = (user.followRequests || []).filter((r) => r.status === "pending");
+        res.json({ success: true, data: { requests } });
+    } catch (err) {
+        next(err);
+    }
+}
+
+/**
+ * POST /api/users/me/follow-requests/:requesterId/accept
+ */
+async function acceptFollowRequest(req, res, next) {
+    try {
+        const result = await usersService.handleFollowRequest(req.user._id, req.params.requesterId, "accept");
+        res.json({ success: true, message: "Demande acceptée", data: result });
+    } catch (err) {
+        next(err);
+    }
+}
+
+/**
+ * POST /api/users/me/follow-requests/:requesterId/reject
+ */
+async function rejectFollowRequest(req, res, next) {
+    try {
+        const result = await usersService.handleFollowRequest(req.user._id, req.params.requesterId, "reject");
+        res.json({ success: true, message: "Demande rejetée", data: result });
+    } catch (err) {
+        next(err);
+    }
+}
+
+/**
+ * PUT /api/users/me/privacy
+ */
+async function updateProfilePrivacy(req, res, next) {
+    try {
+        const { privacy } = req.body;
+        if (!privacy) {
+            return res.status(400).json({
+                success: false,
+                message: "Le paramètre 'privacy' est requis (public|private)",
+            });
+        }
+
+        const user = await usersService.updateProfilePrivacy(req.user._id, privacy);
+        res.json({
+            success: true,
+            message: `Profil défini comme ${privacy === "private" ? "privé" : "public"}`,
+            data: { user },
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+module.exports = {
+    getMe,
+    updateMe,
+    updateAvatar,
+    deleteAvatar,
+    toggleFollow,
+    getFollowRequests,
+    acceptFollowRequest,
+    rejectFollowRequest,
+    updateProfilePrivacy,
+};

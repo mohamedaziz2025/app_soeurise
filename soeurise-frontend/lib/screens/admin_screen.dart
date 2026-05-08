@@ -3,6 +3,7 @@ import '../constants.dart';
 import '../models/models.dart';
 import '../theme/glass_widgets.dart';
 import '../services/admin_service.dart';
+import '../widgets/responsive.dart';
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -140,6 +141,8 @@ class _AdminScreenState extends State<AdminScreen>
 
   @override
   Widget build(BuildContext context) {
+    final sidePadding = Responsive.sidePadding(context, maxWidth: 720);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -173,7 +176,7 @@ class _AdminScreenState extends State<AdminScreen>
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
+            margin: EdgeInsets.symmetric(horizontal: sidePadding),
             decoration: BoxDecoration(
               color: AppColors.beige.withAlpha(120),
               borderRadius: BorderRadius.circular(AppBorderRadius.xl),
@@ -218,6 +221,8 @@ class _AdminScreenState extends State<AdminScreen>
   }
 
   Widget _buildStatsRow() {
+    final sidePadding = Responsive.sidePadding(context, maxWidth: 720);
+
     if (_isLoadingStats) {
       return const Padding(
         padding: EdgeInsets.all(16),
@@ -236,7 +241,7 @@ class _AdminScreenState extends State<AdminScreen>
       height: 100,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        padding: EdgeInsets.fromLTRB(sidePadding, 16, sidePadding, 8),
         itemCount: statItems.length,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (ctx, i) {

@@ -1,6 +1,7 @@
 import 'services/api_client.dart';
 import 'models/models.dart';
 import 'services/profile_service.dart';
+import 'services/notification_service.dart';
 
 // ─── Authentication Service ───
 class AuthenticationService {

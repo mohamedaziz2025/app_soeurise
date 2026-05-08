@@ -25,6 +25,11 @@ const groupMemberSchema = new mongoose.Schema(
             default: "pending",
         },
 
+        isMuted: {
+            type: Boolean,
+            default: false,
+        },
+
         joinedAt: {
             type: Date,
             default: null,
@@ -44,6 +49,7 @@ groupMemberSchema.methods.toPublic = function () {
         userId: this.userId,
         roleInGroup: this.roleInGroup,
         status: this.status,
+        isMuted: this.isMuted,
         joinedAt: this.joinedAt,
         createdAt: this.createdAt,
     };

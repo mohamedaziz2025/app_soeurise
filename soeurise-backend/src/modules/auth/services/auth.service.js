@@ -65,6 +65,13 @@ async function login({ emailOrUsername, password }) {
     throw err;
   }
 
+  // Check if passwordHash exists (defensive check for corrupted data)
+  if (!user.passwordHash) {
+    const err = new Error("Erreur serveur: données utilisateur corrompues");
+    err.statusCode = 500;
+    throw err;
+  }
+
   const ok = await comparePassword(password, user.passwordHash);
   if (!ok) {
     const err = new Error("Identifiants invalides");

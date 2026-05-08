@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants.dart';
 import '../theme/glass_widgets.dart';
+import '../widgets/responsive.dart';
 import '../services.dart';
 import 'main_app.dart';
 import 'signup_screen.dart';
@@ -80,10 +81,16 @@ class _LoginPageState extends State<LoginPage>
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
+              padding: Responsive.contentPadding(
+                context,
+                maxWidth: 520,
+                vertical: AppSpacing.lg,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
                   // Logo
                   FadeSlideIn(
                     delay: Duration.zero,
@@ -288,7 +295,8 @@ class _LoginPageState extends State<LoginPage>
                   ),
 
                   const SizedBox(height: 32),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

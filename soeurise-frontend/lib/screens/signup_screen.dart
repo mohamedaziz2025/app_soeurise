@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants.dart';
 import '../theme/glass_widgets.dart';
+import '../widgets/responsive.dart';
 import '../services.dart';
 import 'main_app.dart';
 
@@ -77,6 +78,8 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isNarrow = Responsive.isNarrow(context, breakpoint: 520);
+
     return Scaffold(
       body: AnimatedGradientBackground(
         child: SafeArea(
@@ -114,207 +117,230 @@ class _SignupScreenState extends State<SignupScreen> {
 
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
+                  padding: Responsive.contentPadding(
+                    context,
+                    maxWidth: 560,
                   ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 8),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 560),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 8),
 
-                      // Header
-                      FadeSlideIn(
-                        child: ShaderMask(
-                          shaderCallback: (bounds) =>
-                              AppColors.accentGradient.createShader(bounds),
-                          child: const Text(
-                            'Créer un compte',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 28,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      FadeSlideIn(
-                        delay: const Duration(milliseconds: 100),
-                        child: Text(
-                          'Rejoignez la communauté Soeurise',
-                          style: AppTextStyles.bodyMedium,
-                        ),
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // Error message
-                      if (_errorMessage != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.errorColor.withAlpha(20),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              _errorMessage!,
-                              style: AppTextStyles.bodySmall.copyWith(
-                                color: AppColors.errorColor,
+                        // Header
+                        FadeSlideIn(
+                          child: ShaderMask(
+                            shaderCallback: (bounds) =>
+                                AppColors.accentGradient.createShader(bounds),
+                            child: const Text(
+                              'Créer un compte',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 28,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
                               ),
-                              textAlign: TextAlign.center,
                             ),
                           ),
                         ),
 
-                      // Form glass card
-                      FadeSlideIn(
-                        delay: const Duration(milliseconds: 200),
-                        child: GlassCard(
-                          padding: const EdgeInsets.all(AppSpacing.lg),
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              children: [
-                                // First + Last name row
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: GlassTextField(
-                                        controller: _firstNameController,
-                                        label: 'Prénom',
-                                        prefixIcon:
-                                            Icons.person_outline_rounded,
-                                        validator: (v) =>
-                                            ValidationService.validateName(
-                                                v ?? ''),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: GlassTextField(
-                                        controller: _lastNameController,
-                                        label: 'Nom',
-                                        prefixIcon:
-                                            Icons.person_outline_rounded,
-                                        validator: (v) =>
-                                            ValidationService.validateName(
-                                                v ?? ''),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                        const SizedBox(height: 8),
 
-                                const SizedBox(height: 16),
-
-                                GlassTextField(
-                                  controller: _usernameController,
-                                  label: 'Nom d\'utilisateur',
-                                  prefixIcon: Icons.alternate_email_rounded,
-                                  validator: (v) =>
-                                      ValidationService.validateUsername(
-                                          v ?? ''),
-                                ),
-
-                                const SizedBox(height: 16),
-
-                                GlassTextField(
-                                  controller: _emailController,
-                                  label: 'Email',
-                                  prefixIcon: Icons.email_outlined,
-                                  keyboardType: TextInputType.emailAddress,
-                                  validator: (v) =>
-                                      ValidationService.validateEmail(
-                                          v ?? ''),
-                                ),
-
-                                const SizedBox(height: 16),
-
-                                GlassTextField(
-                                  controller: _passwordController,
-                                  label: 'Mot de passe',
-                                  prefixIcon: Icons.lock_outline_rounded,
-                                  obscureText: _obscurePassword,
-                                  suffix: GestureDetector(
-                                    onTap: () => setState(() =>
-                                        _obscurePassword =
-                                            !_obscurePassword),
-                                    child: Icon(
-                                      _obscurePassword
-                                          ? Icons.visibility_off_outlined
-                                          : Icons.visibility_outlined,
-                                      color: AppColors.textLight,
-                                      size: 20,
-                                    ),
-                                  ),
-                                  validator: (v) =>
-                                      ValidationService.validatePassword(
-                                          v ?? ''),
-                                ),
-
-                                const SizedBox(height: 16),
-
-                                GlassTextField(
-                                  controller: _confirmPasswordController,
-                                  label: 'Confirmer le mot de passe',
-                                  prefixIcon: Icons.lock_outline_rounded,
-                                  obscureText: true,
-                                  validator: (v) {
-                                    if (v == null || v.isEmpty) {
-                                      return 'Confirmation requise';
-                                    }
-                                    if (v != _passwordController.text) {
-                                      return 'Ne correspond pas';
-                                    }
-                                    return null;
-                                  },
-                                ),
-
-                                const SizedBox(height: 28),
-
-                                GlassButton(
-                                  label: 'Créer le compte',
-                                  icon: Icons.arrow_forward_rounded,
-                                  isLoading: _isLoading,
-                                  onPressed: _submit,
-                                ),
-                              ],
-                            ),
+                        FadeSlideIn(
+                          delay: const Duration(milliseconds: 100),
+                          child: Text(
+                            'Rejoignez la communauté Soeurise',
+                            style: AppTextStyles.bodyMedium,
                           ),
                         ),
-                      ),
 
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 28),
 
-                      // Login link
-                      FadeSlideIn(
-                        delay: const Duration(milliseconds: 400),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Déjà un compte ? ',
-                              style: AppTextStyles.bodyMedium,
-                            ),
-                            GestureDetector(
-                              onTap: () => Navigator.pop(context),
+                        // Error message
+                        if (_errorMessage != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.errorColor.withAlpha(20),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               child: Text(
-                                'Se connecter',
-                                style: AppTextStyles.bodyMedium.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w700,
+                                _errorMessage!,
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.errorColor,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
+                          ),
 
-                      const SizedBox(height: 32),
-                    ],
+                        // Form glass card
+                        FadeSlideIn(
+                          delay: const Duration(milliseconds: 200),
+                          child: GlassCard(
+                            padding: const EdgeInsets.all(AppSpacing.lg),
+                            child: Form(
+                              key: _formKey,
+                              child: Column(
+                                children: [
+                                  // First + Last name row
+                                  if (isNarrow) ...[
+                                    GlassTextField(
+                                      controller: _firstNameController,
+                                      label: 'Prénom',
+                                      prefixIcon: Icons.person_outline_rounded,
+                                      validator: (v) =>
+                                          ValidationService.validateName(
+                                              v ?? ''),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    GlassTextField(
+                                      controller: _lastNameController,
+                                      label: 'Nom',
+                                      prefixIcon: Icons.person_outline_rounded,
+                                      validator: (v) =>
+                                          ValidationService.validateName(
+                                              v ?? ''),
+                                    ),
+                                  ] else
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: GlassTextField(
+                                            controller: _firstNameController,
+                                            label: 'Prénom',
+                                            prefixIcon:
+                                                Icons.person_outline_rounded,
+                                            validator: (v) =>
+                                                ValidationService.validateName(
+                                                    v ?? ''),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: GlassTextField(
+                                            controller: _lastNameController,
+                                            label: 'Nom',
+                                            prefixIcon:
+                                                Icons.person_outline_rounded,
+                                            validator: (v) =>
+                                                ValidationService.validateName(
+                                                    v ?? ''),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                  const SizedBox(height: 16),
+
+                                  GlassTextField(
+                                    controller: _usernameController,
+                                    label: 'Nom d\'utilisateur',
+                                    prefixIcon: Icons.alternate_email_rounded,
+                                    validator: (v) =>
+                                        ValidationService.validateUsername(
+                                            v ?? ''),
+                                  ),
+
+                                  const SizedBox(height: 16),
+
+                                  GlassTextField(
+                                    controller: _emailController,
+                                    label: 'Email',
+                                    prefixIcon: Icons.email_outlined,
+                                    keyboardType: TextInputType.emailAddress,
+                                    validator: (v) =>
+                                        ValidationService.validateEmail(
+                                            v ?? ''),
+                                  ),
+
+                                  const SizedBox(height: 16),
+
+                                  GlassTextField(
+                                    controller: _passwordController,
+                                    label: 'Mot de passe',
+                                    prefixIcon: Icons.lock_outline_rounded,
+                                    obscureText: _obscurePassword,
+                                    suffix: GestureDetector(
+                                      onTap: () => setState(() =>
+                                          _obscurePassword =
+                                              !_obscurePassword),
+                                      child: Icon(
+                                        _obscurePassword
+                                            ? Icons.visibility_off_outlined
+                                            : Icons.visibility_outlined,
+                                        color: AppColors.textLight,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    validator: (v) =>
+                                        ValidationService.validatePassword(
+                                            v ?? ''),
+                                  ),
+
+                                  const SizedBox(height: 16),
+
+                                  GlassTextField(
+                                    controller: _confirmPasswordController,
+                                    label: 'Confirmer le mot de passe',
+                                    prefixIcon: Icons.lock_outline_rounded,
+                                    obscureText: true,
+                                    validator: (v) {
+                                      if (v == null || v.isEmpty) {
+                                        return 'Confirmation requise';
+                                      }
+                                      if (v != _passwordController.text) {
+                                        return 'Ne correspond pas';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 28),
+
+                                  GlassButton(
+                                    label: 'Créer le compte',
+                                    icon: Icons.arrow_forward_rounded,
+                                    isLoading: _isLoading,
+                                    onPressed: _submit,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Login link
+                        FadeSlideIn(
+                          delay: const Duration(milliseconds: 400),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Déjà un compte ? ',
+                                style: AppTextStyles.bodyMedium,
+                              ),
+                              GestureDetector(
+                                onTap: () => Navigator.pop(context),
+                                child: Text(
+                                  'Se connecter',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 32),
+                      ],
+                    ),
                   ),
                 ),
               ),

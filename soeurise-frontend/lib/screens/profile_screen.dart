@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../constants.dart';
 import '../theme/glass_widgets.dart';
 import '../widgets/user_avatar.dart';
+import '../widgets/responsive.dart';
 import '../services/profile_service.dart';
 import '../services/community_service.dart';
 import '../services.dart';
@@ -36,22 +37,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Container(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(AppBorderRadius.xxl),
-              topRight: Radius.circular(AppBorderRadius.xxl),
+        builder: (context, setState) {
+          final isNarrow = Responsive.isNarrow(context, breakpoint: 520);
+
+          return Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
             ),
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(AppBorderRadius.xxl),
+                topRight: Radius.circular(AppBorderRadius.xxl),
+              ),
+            ),
+            child: SingleChildScrollView(
+              padding: Responsive.contentPadding(
+                context,
+                maxWidth: 560,
+                vertical: AppSpacing.lg,
+              ),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                 // Handle bar
                 Container(
                   width: 40,
@@ -118,23 +130,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const SizedBox(height: 24),
 
-                Row(
-                  children: [
-                    Expanded(
-                      child: GlassTextField(
-                        controller: firstNameController,
-                        label: 'Prénom',
+                if (isNarrow) ...[
+                  GlassTextField(
+                    controller: firstNameController,
+                    label: 'Prénom',
+                  ),
+                  const SizedBox(height: 16),
+                  GlassTextField(
+                    controller: lastNameController,
+                    label: 'Nom',
+                  ),
+                ] else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GlassTextField(
+                          controller: firstNameController,
+                          label: 'Prénom',
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GlassTextField(
-                        controller: lastNameController,
-                        label: 'Nom',
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GlassTextField(
+                          controller: lastNameController,
+                          label: 'Nom',
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
                 
                 const SizedBox(height: 16),
 
@@ -156,18 +179,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 GlassButton(
                   label: 'Enregistrer',
                   onPressed: () async {
-                    final success = await ProfileService.instance.updateProfile(
+                    final profileUpdated = await ProfileService.instance.updateProfile(
                       firstName: firstNameController.text.trim(),
                       lastName: lastNameController.text.trim(),
                       username: usernameController.text.trim(),
                       // bio feature not in backend user yet, could be added later
                     );
-                    
+                    bool avatarUpdated = false;
                     if (tempImageFile != null) {
-                      await ProfileService.instance.updateAvatar(tempImageFile!.path);
+                      avatarUpdated = await ProfileService.instance
+                          .updateAvatar(tempImageFile!.path);
                     }
 
-                    if (success && context.mounted) {
+                    final didUpdate = profileUpdated || avatarUpdated;
+
+                    if (didUpdate && context.mounted) {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -185,16 +211,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     }
                   },
                 ),
-              ],
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final sidePadding = Responsive.sidePadding(context, maxWidth: 720);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
@@ -240,52 +271,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 20),
                           // Avatar with animated border
                           FadeSlideIn(
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Container(
-                                  width: 108,
-                                  height: 108,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: AppColors.primaryGradient,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppColors.primary.withAlpha(40),
-                                        blurRadius: 20,
-                                        spreadRadius: 4,
-                                      ),
-                                    ],
+                            child: GestureDetector(
+                              onTap: () => _showEditDialog(context),
+                              behavior: HitTestBehavior.opaque,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Container(
+                                    width: 108,
+                                    height: 108,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: AppColors.primaryGradient,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppColors.primary.withAlpha(40),
+                                          blurRadius: 20,
+                                          spreadRadius: 4,
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                Container(
-                                  width: 100,
-                                  height: 100,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white,
+                                  Container(
+                                    width: 100,
+                                    height: 100,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white,
+                                    ),
+                                    child: Center(
+                                      child: profile.profileImageFile != null
+                                          ? CircleAvatar(
+                                              radius: 46,
+                                              backgroundImage: FileImage(
+                                                  profile.profileImageFile!),
+                                            )
+                                          : UserAvatar(
+                                              imageUrl: profile
+                                                      .profileImageUrl.isNotEmpty
+                                                  ? profile.profileImageUrl
+                                                  : null,
+                                              username: profile
+                                                      .username.isNotEmpty
+                                                  ? profile.username
+                                                  : 'U',
+                                              radius: 46,
+                                            ),
+                                    ),
                                   ),
-                                  child: Center(
-                                    child: profile.profileImageFile != null
-                                        ? CircleAvatar(
-                                            radius: 46,
-                                            backgroundImage: FileImage(
-                                                profile.profileImageFile!),
-                                          )
-                                        : UserAvatar(
-                                            imageUrl: profile
-                                                    .profileImageUrl.isNotEmpty
-                                                ? profile.profileImageUrl
-                                                : null,
-                                            username: profile
-                                                    .username.isNotEmpty
-                                                ? profile.username
-                                                : 'U',
-                                            radius: 46,
-                                          ),
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -372,7 +407,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // Stats Section
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.fromLTRB(sidePadding, 20, sidePadding, 20),
               child: ValueListenableBuilder<Profile>(
                 valueListenable: ProfileService.instance.profile,
                 builder: (context, profile, child) {
@@ -408,7 +443,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // Activity Section
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: EdgeInsets.symmetric(horizontal: sidePadding),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

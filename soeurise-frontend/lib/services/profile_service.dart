@@ -4,6 +4,7 @@ import '../models/models.dart';
 import 'api_client.dart';
 
 class Profile {
+  String id;
   String firstName;
   String lastName;
   String username;
@@ -12,11 +13,14 @@ class Profile {
   String profileImageUrl; // full URL or empty
   File? profileImageFile;
   String accountType;
+  int followersCount;
+  int followingCount;
   int eventsRegistered;
   int masterclassesWatched;
   int communitiesJoined;
 
   Profile({
+    this.id = '',
     this.firstName = '',
     this.lastName = '',
     required this.username,
@@ -25,6 +29,8 @@ class Profile {
     this.profileImageUrl = '',
     this.accountType = 'user',
     this.profileImageFile,
+    this.followersCount = 0,
+    this.followingCount = 0,
     this.eventsRegistered = 0,
     this.masterclassesWatched = 0,
     this.communitiesJoined = 0,
@@ -49,14 +55,18 @@ class ProfileService {
   /// Populate profile from a backend User model (called after login/register).
   void setFromUser(User user) {
     final p = profile.value;
+    p.id = user.id;
     p.firstName = user.firstName;
     p.lastName = user.lastName;
     p.username = user.username;
     p.email = user.email;
     p.profileImageUrl = user.avatarFullUrl;
     p.accountType = user.role;
+    p.followersCount = user.followersCount;
+    p.followingCount = user.followingCount;
     // Re-assign to trigger listeners
     profile.value = Profile(
+      id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
       username: user.username,
@@ -64,6 +74,8 @@ class ProfileService {
       bio: p.bio,
       profileImageUrl: user.avatarFullUrl,
       accountType: user.role,
+      followersCount: user.followersCount,
+      followingCount: user.followingCount,
       eventsRegistered: p.eventsRegistered,
       masterclassesWatched: p.masterclassesWatched,
       communitiesJoined: p.communitiesJoined,
@@ -111,7 +123,22 @@ class ProfileService {
         if (lastName != null) p.lastName = lastName;
         if (username != null) p.username = username;
         if (email != null) p.email = email;
-        profile.value = p;
+        profile.value = Profile(
+          id: p.id,
+          firstName: p.firstName,
+          lastName: p.lastName,
+          username: p.username,
+          email: p.email,
+          bio: p.bio,
+          profileImageUrl: p.profileImageUrl,
+          profileImageFile: p.profileImageFile,
+          accountType: p.accountType,
+          followersCount: p.followersCount,
+          followingCount: p.followingCount,
+          eventsRegistered: p.eventsRegistered,
+          masterclassesWatched: p.masterclassesWatched,
+          communitiesJoined: p.communitiesJoined,
+        );
         return true;
       }
       return false;
@@ -168,14 +195,74 @@ class ProfileService {
     profile.value = p;
   }
 
+  /// Get follow requests for current user
+  Future<List<Map<String, dynamic>>> getFollowRequests() async {
+    try {
+      final res = await _api.get('/users/me/follow-requests');
+      if (res.success && res.data != null) {
+        final requests = res.data!['followRequests'] as List? ?? [];
+        return requests.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching follow requests: $e');
+      return [];
+    }
+  }
+
+  /// Accept a follow request
+  Future<bool> acceptFollowRequest(String requesterId) async {
+    try {
+      final res = await _api.post(
+        '/users/me/follow-requests/$requesterId/accept',
+        {},
+      );
+      return res.success;
+    } catch (e) {
+      print('Error accepting follow request: $e');
+      return false;
+    }
+  }
+
+  /// Reject a follow request
+  Future<bool> rejectFollowRequest(String requesterId) async {
+    try {
+      final res = await _api.post(
+        '/users/me/follow-requests/$requesterId/reject',
+        {},
+      );
+      return res.success;
+    } catch (e) {
+      print('Error rejecting follow request: $e');
+      return false;
+    }
+  }
+
+  /// Update profile privacy setting
+  Future<bool> updateProfilePrivacy(String privacy) async {
+    // privacy should be 'public' or 'private'
+    try {
+      final res = await _api.put('/users/me/privacy', {
+        'privacy': privacy,
+      });
+      return res.success;
+    } catch (e) {
+      print('Error updating profile privacy: $e');
+      return false;
+    }
+  }
+
   /// Reset profile to default (used on logout).
   void logout() {
     profile.value = Profile(
+      id: '',
       username: 'Invité',
       email: '',
       bio: '',
       profileImageUrl: '',
       profileImageFile: null,
+      followersCount: 0,
+      followingCount: 0,
       eventsRegistered: 0,
       masterclassesWatched: 0,
       communitiesJoined: 0,

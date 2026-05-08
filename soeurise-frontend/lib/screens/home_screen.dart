@@ -4,9 +4,13 @@ import '../models/models.dart';
 import '../theme/glass_widgets.dart';
 import '../widgets/post_card.dart';
 import '../widgets/user_avatar.dart';
+import '../widgets/responsive.dart';
 import 'profile_screen.dart';
+import 'notifications_screen.dart';
+import '../services/notification_service.dart';
 
 import '../services/post_service.dart';
+import '../services/profile_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,11 +23,6 @@ class HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = true;
-
-  final String currentUsername = 'Fatima Ahmed';
-  final String currentUserImage = 'https://via.placeholder.com/48';
-  int followers = 1250;
-  int following = 450;
 
   List<Post> userPosts = [];
   List<Post> feeds = [];
@@ -48,7 +47,12 @@ class HomeScreenState extends State<HomeScreen>
         setState(() {
           feeds = results[0];
           subscriptionFeed = results[1];
-          userPosts = feeds.where((p) => p.username == currentUsername).toList();
+          final profile = ProfileService.instance.profile.value;
+          if (profile.id.isNotEmpty) {
+            userPosts = feeds.where((p) => p.authorId == profile.id).toList();
+          } else {
+            userPosts = feeds.where((p) => p.username == profile.username).toList();
+          }
           _isLoading = false;
         });
       }
@@ -108,19 +112,58 @@ class HomeScreenState extends State<HomeScreen>
                 ),
               ),
               // Notification button
-              Container(
-                margin: const EdgeInsets.only(right: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withAlpha(20),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.notifications_outlined,
-                    color: AppColors.primary,
-                  ),
-                  onPressed: () {},
-                ),
+              ValueListenableBuilder<List<AppNotification>>(
+                valueListenable: NotificationRealtimeService.instance.notifications,
+                builder: (context, notifications, _) {
+                  final unreadCount = notifications.where((n) => !n.isRead).length;
+                  return Stack(
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(right: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withAlpha(20),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.notifications_outlined,
+                            color: AppColors.primary,
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const NotificationsScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      if (unreadCount > 0)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              unreadCount > 99 ? '99+' : unreadCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ],
             bottom: PreferredSize(
@@ -181,6 +224,8 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildFeedList(List<Post> posts, {required bool isSubscription}) {
+    final sidePadding = Responsive.sidePadding(context, maxWidth: 720);
+
     if (_isLoading) {
       return const Center(
           child: CircularProgressIndicator(color: AppColors.primary));
@@ -222,14 +267,17 @@ class HomeScreenState extends State<HomeScreen>
       onRefresh: refreshFeeds,
       color: AppColors.primary,
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        padding: EdgeInsets.fromLTRB(sidePadding, 16, sidePadding, 100),
         itemCount: posts.length,
         itemBuilder: (context, index) {
           return FadeSlideIn(
             delay: Duration(milliseconds: index * 100),
             child: Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: PostCard(post: posts[index]),
+              child: PostCard(
+                post: posts[index],
+                onPostUpdated: refreshFeeds,
+              ),
             ),
           );
         },
@@ -238,127 +286,143 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildProfileTab() {
+    final sidePadding = Responsive.sidePadding(context, maxWidth: 720);
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          FadeSlideIn(
-            child: GlassCard(
-              padding: EdgeInsets.zero,
-              child: Column(
-                children: [
-                  Container(
-                    height: 100,
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(AppBorderRadius.lg),
-                        topRight: Radius.circular(AppBorderRadius.lg),
+      padding: EdgeInsets.fromLTRB(sidePadding, 16, sidePadding, 100),
+      child: ValueListenableBuilder<Profile>(
+        valueListenable: ProfileService.instance.profile,
+        builder: (context, profile, child) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FadeSlideIn(
+                child: GlassCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      Container(
+                        height: 100,
+                        decoration: BoxDecoration(
+                          gradient: AppColors.primaryGradient,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(AppBorderRadius.lg),
+                            topRight: Radius.circular(AppBorderRadius.lg),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  Transform.translate(
-                    offset: const Offset(0, -40),
-                    child: Column(
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 4,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withAlpha(30),
-                                blurRadius: 12,
-                              ),
-                            ],
-                          ),
-                          child: UserAvatar(
-                            imageUrl: currentUserImage,
-                            username: currentUsername,
-                            radius: 44,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          currentUsername,
-                          style: AppTextStyles.headline3,
-                        ),
-                        Text(
-                          '@fatima_ahmed',
-                          style: AppTextStyles.bodySmall,
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                      Transform.translate(
+                        offset: const Offset(0, -40),
+                        child: Column(
                           children: [
-                            _buildStat('${userPosts.length}', 'Publications'),
                             Container(
-                              width: 1,
-                              height: 30,
-                              color: AppColors.beigeDark.withAlpha(60),
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 24),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 4,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primary.withAlpha(30),
+                                    blurRadius: 12,
+                                  ),
+                                ],
+                              ),
+                              child: UserAvatar(
+                                imageUrl: profile.profileImageUrl.isNotEmpty
+                                    ? profile.profileImageUrl
+                                    : null,
+                                username: profile.username.isNotEmpty
+                                    ? profile.username
+                                    : 'Soeurise',
+                                radius: 44,
+                              ),
                             ),
-                            _buildStat('$followers', 'Abonnés'),
-                            Container(
-                              width: 1,
-                              height: 30,
-                              color: AppColors.beigeDark.withAlpha(60),
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 24),
+                            const SizedBox(height: 10),
+                            Text(
+                              profile.fullName,
+                              style: AppTextStyles.headline3,
                             ),
-                            _buildStat('$following', 'Suivies'),
+                            Text(
+                              '@${profile.username}',
+                              style: AppTextStyles.bodySmall,
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _buildStat('${userPosts.length}', 'Publications'),
+                                Container(
+                                  width: 1,
+                                  height: 30,
+                                  color: AppColors.beigeDark.withAlpha(60),
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 24),
+                                ),
+                                _buildStat(
+                                    '${profile.followersCount}', 'Abonnés'),
+                                Container(
+                                  width: 1,
+                                  height: 30,
+                                  color: AppColors.beigeDark.withAlpha(60),
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 24),
+                                ),
+                                _buildStat(
+                                    '${profile.followingCount}', 'Suivies'),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: GlassButton(
+                                label: 'Modifier le profil',
+                                icon: Icons.edit_rounded,
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                        builder: (_) =>
+                                            const ProfileScreen()),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 12),
                           ],
                         ),
-                        const SizedBox(height: 20),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: GlassButton(
-                            label: 'Modifier le profil',
-                            icon: Icons.edit_rounded,
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        const ProfileScreen()),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  'Mes Publications',
+                  style: AppTextStyles.headline3.copyWith(fontSize: 18),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              ...userPosts.asMap().entries.map((entry) {
+                return FadeSlideIn(
+                  delay: Duration(milliseconds: (entry.key + 1) * 150),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: PostCard(
+                      post: entry.value,
+                      onPostUpdated: refreshFeeds,
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              'Mes Publications',
-              style: AppTextStyles.headline3.copyWith(fontSize: 18),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          ...userPosts.asMap().entries.map((entry) {
-            return FadeSlideIn(
-              delay: Duration(milliseconds: (entry.key + 1) * 150),
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: PostCard(post: entry.value),
-              ),
-            );
-          }),
-        ],
+                );
+              }),
+            ],
+          );
+        },
       ),
     );
   }

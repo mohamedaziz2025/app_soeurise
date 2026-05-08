@@ -4,6 +4,7 @@ import '../theme/glass_widgets.dart';
 import '../models/models.dart';
 import '../widgets/content_image.dart';
 import '../services/event_service.dart';
+import '../widgets/responsive.dart';
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
@@ -41,6 +42,8 @@ class _EventsScreenState extends State<EventsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final sidePadding = Responsive.sidePadding(context, maxWidth: 720);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -48,7 +51,7 @@ class _EventsScreenState extends State<EventsScreen> {
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                padding: EdgeInsets.fromLTRB(sidePadding, 16, sidePadding, 20),
                 child: FadeSlideIn(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,7 +85,7 @@ class _EventsScreenState extends State<EventsScreen> {
               )
             else
               SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+              padding: EdgeInsets.fromLTRB(sidePadding, 0, sidePadding, 100),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {

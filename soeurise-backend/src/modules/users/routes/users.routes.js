@@ -18,8 +18,19 @@ router.put("/me/avatar", uploadAvatar.single("avatar"), usersController.updateAv
 // DELETE /api/users/me/avatar — supprimer avatar
 router.delete("/me/avatar", usersController.deleteAvatar);
 
-// POST /api/users/:id/follow — suivre/ne plus suivre un utilisateur
-const postsController = require("../../posts/controllers/posts.controller");
-router.post("/:id/follow", postsController.toggleFollow);
+// PUT /api/users/me/privacy — update privacy setting (public|private)
+router.put("/me/privacy", usersController.updateProfilePrivacy);
+
+// GET /api/users/me/follow-requests — list pending follow requests
+router.get("/me/follow-requests", usersController.getFollowRequests);
+
+// POST /api/users/me/follow-requests/:requesterId/accept — accept follow request
+router.post("/me/follow-requests/:requesterId/accept", usersController.acceptFollowRequest);
+
+// POST /api/users/me/follow-requests/:requesterId/reject — reject follow request
+router.post("/me/follow-requests/:requesterId/reject", usersController.rejectFollowRequest);
+
+// POST /api/users/:id/follow — toggle follow/unfollow a user
+router.post("/:id/follow", usersController.toggleFollow);
 
 module.exports = router;
