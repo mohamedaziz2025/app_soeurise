@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import '../constants.dart';
 import '../theme/glass_widgets.dart';
@@ -256,12 +257,19 @@ class _PostCreationScreenState extends State<PostCreationScreen> {
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(
                                     AppBorderRadius.lg),
-                                child: Image.file(
-                                  selectedImage!,
-                                  height: 200,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
+                                child: kIsWeb
+                                    ? Image.network(
+                                        selectedImage!.path,
+                                        height: 200,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Image.file(
+                                        selectedImage!,
+                                        height: 200,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                      ),
                               ),
                               Positioned(
                                 top: 8,

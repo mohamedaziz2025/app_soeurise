@@ -12,6 +12,9 @@ router.get("/", notificationController.listNotifications);
 // POST /api/notifications/read-all
 router.post("/read-all", notificationController.markAllRead);
 
+// POST /api/notifications/private/:userId
+router.post("/private/:userId", notificationController.sendPrivateMessage);
+
 // POST /api/notifications/:id/read
 router.post("/:id/read", notificationController.markRead);
 

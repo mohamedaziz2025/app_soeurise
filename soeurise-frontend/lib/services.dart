@@ -91,6 +91,7 @@ class AuthenticationService {
   /// Logout — clears JWT token and resets profile.
   Future<bool> logout() async {
     try {
+      await NotificationRealtimeService.instance.disconnect();
       await _api.clearToken();
       ProfileService.instance.logout();
       return true;

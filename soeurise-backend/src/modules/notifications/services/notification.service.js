@@ -1,4 +1,5 @@
 const Notification = require("../models/Notification");
+const User = require("../../users/models/User");
 
 function getIoSafe() {
     try {
@@ -68,10 +69,45 @@ async function deleteNotification(userId, notificationId) {
     return { message: "Notification supprimee" };
 }
 
+async function sendPrivateMessage({ senderUserId, targetUserId, message }) {
+    if (senderUserId.toString() === targetUserId.toString()) {
+        const err = new Error("Impossible d'envoyer un message privé à soi-même");
+        err.statusCode = 400;
+        throw err;
+    }
+
+    const [sender, target] = await Promise.all([
+        User.findById(senderUserId).select("firstName lastName username"),
+        User.findById(targetUserId).select("_id"),
+    ]);
+
+    if (!target) {
+        const err = new Error("Destinataire introuvable");
+        err.statusCode = 404;
+        throw err;
+    }
+
+    const senderName = sender
+        ? (`${sender.firstName || ""} ${sender.lastName || ""}`.trim() || sender.username || "Utilisateur")
+        : "Utilisateur";
+
+    return createNotification({
+        userId: targetUserId,
+        type: "private_message",
+        title: "Nouveau message privé",
+        message,
+        data: {
+            senderUserId: senderUserId.toString(),
+            senderName,
+        },
+    });
+}
+
 module.exports = {
     createNotification,
     listNotifications,
     markRead,
     markAllRead,
     deleteNotification,
+    sendPrivateMessage,
 };

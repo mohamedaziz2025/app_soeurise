@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../constants.dart';
 import '../theme/glass_widgets.dart';
 import '../services/profile_service.dart';
+import '../services.dart';
 import '../widgets/responsive.dart';
 import 'login_page.dart';
 
@@ -96,7 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (confirmed == true) {
-      ProfileService.instance.logout();
+      await AuthenticationService.instance.logout();
       if (!context.mounted) return;
       navigator.pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginPage()),
