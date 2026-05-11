@@ -1,10 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../constants.dart';
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../theme/glass_widgets.dart';
 import '../services/community_service.dart';
+import '../services/profile_service.dart';
 import '../widgets/responsive.dart';
 import 'group_members_screen.dart';
 
@@ -27,12 +27,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   bool _isSending = false;
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
     messages = CommunityService.instance.messagesFor(widget.communityId);
     _loadMessages();
+    _loadMembershipRole();
   }
 
   @override
@@ -63,6 +65,20 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       );
     }).toList();
     messages.value = mapped;
+  }
+
+  Future<void> _loadMembershipRole() async {
+    final membership =
+        await CommunityService.instance.getMyMembership(widget.communityId);
+    if (!mounted || membership == null) return;
+    final role = (membership['roleInGroup'] ?? '').toString();
+    final isGlobalAdmin = ProfileService.instance.profile.value.accountType == 'admin';
+    setState(() {
+      _isAdmin = isGlobalAdmin ||
+          role == 'owner' ||
+          role == 'moderator' ||
+          role == 'admin';
+    });
   }
 
   void _sendMessage() {
@@ -238,7 +254,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                         builder: (context) => GroupMembersScreen(
                           groupId: widget.communityId,
                           groupName: widget.communityName,
-                          isAdmin: false, // TODO: Get from group data
+                          isAdmin: _isAdmin,
                         ),
                       ),
                     );

@@ -17,9 +17,11 @@ class NotificationRealtimeService {
   bool _connected = false;
 
   Future<void> connect() async {
-    if (_connected) return;
     final userId = ProfileService.instance.profile.value.id;
     if (userId.isEmpty) return;
+    if (_connected) return;
+
+    notifications.value = <AppNotification>[];
 
     final socket = io.io(
       ApiConfig.serverUrl,
@@ -36,6 +38,12 @@ class NotificationRealtimeService {
 
     socket.on('notification', (data) {
       if (data is Map<String, dynamic>) {
+        final notificationUserId = data['userId']?.toString();
+        if (notificationUserId != null &&
+            notificationUserId.isNotEmpty &&
+            notificationUserId != userId) {
+          return;
+        }
         final notif = AppNotification.fromJson(data);
         final updated = [notif, ...notifications.value];
         notifications.value = updated;
@@ -54,6 +62,7 @@ class NotificationRealtimeService {
     _socket?.disconnect();
     _socket = null;
     _connected = false;
+    notifications.value = <AppNotification>[];
   }
 
   Future<void> loadInitial({int limit = 30}) async {
@@ -103,4 +112,19 @@ class NotificationRealtimeService {
 
   int get unreadCount =>
       notifications.value.where((n) => !n.isRead).length;
+
+  Future<bool> sendPrivateMessage({
+    required String recipientUserId,
+    required String message,
+  }) async {
+    try {
+      final res = await ApiClient.instance.post(
+        '/notifications/private/$recipientUserId',
+        {'message': message},
+      );
+      return res.success;
+    } catch (_) {
+      return false;
+    }
+  }
 }

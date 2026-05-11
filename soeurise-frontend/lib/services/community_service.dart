@@ -345,7 +345,7 @@ class CommunityService {
     }
   }
 
-  /// List members (admin/moderator only).
+  /// List group members.
   Future<List<Map<String, dynamic>>> listMembers(String groupId) async {
     try {
       final res = await _api.get('/community/groups/$groupId/members');
@@ -356,6 +356,19 @@ class CommunityService {
       return [];
     } catch (_) {
       return [];
+    }
+  }
+
+  /// Get detailed membership for current user in a group.
+  Future<Map<String, dynamic>?> getMyMembership(String groupId) async {
+    try {
+      final res = await _api.get('/community/groups/$groupId/membership/me');
+      if (res.success && res.data != null) {
+        return res.data as Map<String, dynamic>;
+      }
+      return null;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -373,6 +386,19 @@ class CommunityService {
       if (status != null) body['status'] = status;
       if (roleInGroup != null) body['roleInGroup'] = roleInGroup;
       final res = await _api.patch('/community/groups/$groupId/members/$memberId', body);
+      return res.success;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Remove a member from a group (admin/moderator only).
+  Future<bool> removeMember({
+    required String groupId,
+    required String memberId,
+  }) async {
+    try {
+      final res = await _api.delete('/community/groups/$groupId/members/$memberId');
       return res.success;
     } catch (_) {
       return false;

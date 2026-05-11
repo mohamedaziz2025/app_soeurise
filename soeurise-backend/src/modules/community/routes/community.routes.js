@@ -27,6 +27,7 @@ router.get("/groups/:id/membership/me", requireAuth, communityController.getMyMe
 router.get("/groups/memberships/me", requireAuth, communityController.listMyMemberships);
 router.get("/groups/:id/subscription/me", requireAuth, communityController.getMySubscription);
 router.post("/groups/:id/leave", requireAuth, communityController.leaveGroup);
+router.get("/groups/:id/members", requireAuth, communityController.listMembers);
 
 // Group messages (members only)
 router.get(
@@ -47,7 +48,6 @@ router.post(
 const mgmt = requireGroupRole(["owner", "moderator"]);
 
 router.get("/groups/:id/requests", requireAuth, mgmt, communityController.listRequests);
-router.get("/groups/:id/members", requireAuth, mgmt, communityController.listMembers);
 router.patch("/groups/:id/requests/:memberId", requireAuth, mgmt, communityController.handleRequest);
 router.post("/groups/:id/members", requireAuth, mgmt, communityController.addMember);
 router.patch("/groups/:id/members/:memberId", requireAuth, mgmt, communityController.updateMember);

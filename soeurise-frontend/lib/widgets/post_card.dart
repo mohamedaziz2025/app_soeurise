@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:share_plus/share_plus.dart';
 import '../constants.dart';
 import '../models/models.dart';
 import '../theme/glass_widgets.dart';
 import '../services/post_service.dart';
 import '../services/profile_service.dart';
+import '../services/notification_service.dart';
 import 'user_avatar.dart';
 import 'content_image.dart';
 import 'responsive.dart';
@@ -131,6 +133,51 @@ class _PostCardState extends State<PostCard>
         ),
       );
     }
+  }
+
+  Future<void> _sendPrivateMessage() async {
+    if (widget.post.authorId.isEmpty) return;
+    final controller = TextEditingController();
+    final sent = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Message privé'),
+        content: TextField(
+          controller: controller,
+          minLines: 2,
+          maxLines: 5,
+          decoration: const InputDecoration(
+            hintText: 'Écrivez votre message...',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Envoyer'),
+          ),
+        ],
+      ),
+    );
+
+    if (sent != true) return;
+    final text = controller.text.trim();
+    if (text.isEmpty) return;
+
+    final ok = await NotificationRealtimeService.instance.sendPrivateMessage(
+      recipientUserId: widget.post.authorId,
+      message: text,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ok ? 'Message privé envoyé' : 'Échec de l’envoi du message'),
+        backgroundColor: ok ? AppColors.successColor : AppColors.errorColor,
+      ),
+    );
   }
 
   Future<void> _editPost() async {
@@ -265,9 +312,22 @@ class _PostCardState extends State<PostCard>
                         color: AppColors.textLight,
                       ),
                     )
-                  : const Icon(
-                      Icons.more_horiz_rounded,
-                      color: AppColors.textLight,
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Message privé',
+                          onPressed: _sendPrivateMessage,
+                          icon: const Icon(
+                            Icons.mail_outline_rounded,
+                            color: AppColors.textLight,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.more_horiz_rounded,
+                          color: AppColors.textLight,
+                        ),
+                      ],
                     ),
             ],
           ),
@@ -297,12 +357,19 @@ class _PostCardState extends State<PostCard>
             const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(AppBorderRadius.md),
-              child: Image.file(
-                widget.post.localImageFile!,
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
+              child: kIsWeb
+                  ? Image.network(
+                      widget.post.localImageFile!.path,
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    )
+                  : Image.file(
+                      widget.post.localImageFile!,
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
             ),
           ],
 

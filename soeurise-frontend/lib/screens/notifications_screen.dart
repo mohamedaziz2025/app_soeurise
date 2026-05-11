@@ -177,6 +177,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.school_rounded;
       case 'group_message':
         return Icons.chat_bubble_rounded;
+      case 'private_message':
+        return Icons.mail_rounded;
       default:
         return Icons.notifications_rounded;
     }
@@ -196,6 +198,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return const Color(0xFFBA68C8);
       case 'group_message':
         return AppColors.primaryDark;
+      case 'private_message':
+        return const Color(0xFF42A5F5);
       default:
         return AppColors.primary;
     }

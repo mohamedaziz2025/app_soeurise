@@ -78,10 +78,9 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
     );
 
     if (confirmed == true) {
-      final success = await _communityService.updateMember(
+      final success = await _communityService.removeMember(
         groupId: widget.groupId,
         memberId: memberId,
-        status: 'removed',
       );
       if (success) {
         setState(() {
@@ -149,13 +148,17 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
             itemCount: members.length,
             itemBuilder: (context, index) {
               final member = members[index];
-              final memberId = member['_id'] as String? ?? '';
-              final username = member['username'] as String? ?? 'Utilisateur';
-              final firstName = member['firstName'] as String? ?? '';
-              final lastName = member['lastName'] as String? ?? '';
+              final memberId = member['id']?.toString() ?? '';
+              final user = member['user'] as Map<String, dynamic>? ?? const {};
+              final username = user['username'] as String? ?? 'Utilisateur';
+              final firstName = user['firstName'] as String? ?? '';
+              final lastName = user['lastName'] as String? ?? '';
               final role = member['roleInGroup'] as String? ?? 'member';
               final isMuted = member['isMuted'] as bool? ?? false;
-              final avatar = member['avatar'] as String? ?? '';
+              final avatarRaw = user['avatarUrl']?.toString() ?? '';
+              final avatar = avatarRaw.isNotEmpty
+                  ? '$kServerBaseUrl${avatarRaw.startsWith('/') ? avatarRaw : '/$avatarRaw'}'
+                  : '';
               final currentUserId = _profileService.profile.value.id;
               final isCurrentUser = memberId == currentUserId;
 
@@ -203,16 +206,21 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
                         children: [
                           Chip(
                             label: Text(
-                              role == 'admin' ? 'Admin' : 'Membre',
+                              (role == 'owner' || role == 'admin')
+                                  ? 'Admin'
+                                  : (role == 'moderator' ? 'Modérateur' : 'Membre'),
                               style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
                               ),
                             ),
-                            backgroundColor: role == 'admin'
-                                ? Colors.red
-                                : AppColors.primary,
+                            backgroundColor:
+                                (role == 'owner' || role == 'admin')
+                                    ? Colors.red
+                                    : (role == 'moderator'
+                                        ? Colors.deepPurple
+                                        : AppColors.primary),
                             padding: EdgeInsets.zero,
                           ),
                           if (isMuted)
